@@ -34,6 +34,12 @@
 
 #include "DataFormats/GsfTrackReco/interface/GsfTrack.h"
 
+#include "TrackingTools/Records/interface/TransientTrackRecord.h"
+#include "TrackingTools/TransientTrack/interface/TransientTrackBuilder.h"
+#include "TrackingTools/IPTools/interface/IPTools.h"
+
+#include "DataFormats/VertexReco/interface/Vertex.h"
+#include "DataFormats/VertexReco/interface/VertexFwd.h"
 
 // root stuff !
 #include "TH1D.h"
@@ -79,6 +85,7 @@ private:
     // ----------member data ---------------------------
     bool isMC_;
     edm::InputTag electronsCollection_;
+    edm::InputTag primaryVertexInputTag_;
     std::string outputFile_; // output file
     
     

@@ -8,6 +8,8 @@ ElecIdTreeProducer::ElecIdTreeProducer(const edm::ParameterSet& iConfig)
    isMC_                   = iConfig.getParameter<bool>("isMC");
     
    electronsCollection_      = iConfig.getParameter<edm::InputTag>("electronsCollection");
+   primaryVertexInputTag_    = iConfig.getParameter<edm::InputTag>("primaryVertexInputTag");
+
     
    outputFile_   = iConfig.getParameter<std::string>("outputFile");
    rootFile_ = TFile::Open(outputFile_.c_str(),"RECREATE");
@@ -40,11 +42,20 @@ ElecIdTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
     edm::Handle<reco::GsfElectronCollection> electronsCollection;
     iEvent.getByLabel(electronsCollection_ , electronsCollection);
     
+    // load the vertices collection
+    edm::Handle<reco::VertexCollection> vtx_h;
+    iEvent.getByLabel(primaryVertexInputTag_, vtx_h);
+    
+    //load the transiant tracks builder
+    edm::ESHandle<TransientTrackBuilder> builder;
+    iSetup.get<TransientTrackRecord>().get("TransientTrackBuilder", builder);
+    TransientTrackBuilder thebuilder = *(builder.product());
     
 
     T_Event_RunNumber = iEvent.id().run();
     T_Event_EventNumber = iEvent.id().event();
     T_Event_LuminosityBlock = iEvent.id().luminosityBlock();
+    
     
     
     /// now start the loop on the electrons:
@@ -70,7 +81,6 @@ ElecIdTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
         
         T_Elec_fbrem->push_back(eleIt->fbrem());
         T_Elec_nbrems->push_back(eleIt->numberOfBrems());
-       // T_Elec_missingHits->push_back(eleIt->gsfTrack()->trackerExpectedHitsInner());
         
         
         T_Elec_Dist->push_back(eleIt->convDist());
@@ -81,8 +91,24 @@ ElecIdTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
         //T_Elec_ip3d->push_back(eleIt->gsfTrack().ip3D());
         /*T_Elec_ip3ds->push_back(eleIt->gsfTrack()->sip3D());*/
         
+        // ip stuff
+        float pv_ip3d = -999.0;
+        float pv_ip3dSig = 0.0;
+        if (eleIt->gsfTrack().isNonnull()) {
+            const double gsfsign   = ( (-eleIt->gsfTrack()->dxy(vtx_h->at(0).position()))   >=0 ) ? 1. : -1.;
+            
+            const reco::TransientTrack &tt = thebuilder.build(eleIt->gsfTrack());
+            const std::pair<bool,Measurement1D> &ip3dpv =  IPTools::absoluteImpactParameter3D(tt,vtx_h->at(0));
+            if (ip3dpv.first) {
+                double ip3d = gsfsign*ip3dpv.second.value();
+                double ip3derr = ip3dpv.second.error();
+                pv_ip3d = ip3d;
+                pv_ip3dSig = ip3d/ip3derr;
+            }
+        }
         
-        
+       cout << pv_ip3d << endl; 
+       cout << pv_ip3dSig << endl; 
         //all kfStuff
         bool validKF= false;
         reco::TrackRef myTrackRef = eleIt->closestTrack();
