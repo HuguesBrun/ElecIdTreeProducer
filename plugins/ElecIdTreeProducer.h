@@ -64,6 +64,8 @@ private:
     virtual void beginJob() override;
     virtual void analyze(const edm::Event&, const edm::EventSetup&) override;
     virtual void endJob() override;
+    virtual void beginEvent();
+    virtual void endEvent();
     
     //virtual void beginRun(edm::Run const&, edm::EventSetup const&) override;
     //virtual void endRun(edm::Run const&, edm::EventSetup const&) override;
@@ -108,7 +110,7 @@ private:
     std::vector<float> *T_Elec_Pz;
     std::vector<float> *T_Elec_Pt;
     std::vector<float> *T_Elec_Energy;
-    std::vector<int> *T_Elec_Charge
+    std::vector<int> *T_Elec_Charge;
 
     //position in ECAL
     std::vector<int> *T_Elec_isEB;
@@ -207,7 +209,6 @@ private:
     std::vector<float> *T_Elec_e1x5e5x5;
     std::vector<float> *T_Elec_s9e25;
     std::vector<float> *T_Elec_R9;
-    std::vector<float> *T_Elec_EcalEnergy;
     
     
     
