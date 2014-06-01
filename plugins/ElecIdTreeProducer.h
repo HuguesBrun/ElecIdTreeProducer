@@ -32,6 +32,9 @@
 #include "DataFormats/EgammaCandidates/interface/GsfElectron.h"
 #include "DataFormats/EgammaCandidates/interface/GsfElectronFwd.h"
 
+#include "DataFormats/GsfTrackReco/interface/GsfTrack.h"
+
+
 // root stuff !
 #include "TH1D.h"
 #include <map>
@@ -105,6 +108,7 @@ private:
     // electron variables
     // kinematics
     std::vector<float> *T_Elec_Eta;
+    std::vector<float> *T_Elec_Phi;
     std::vector<float> *T_Elec_Px;
     std::vector<float> *T_Elec_Py;
     std::vector<float> *T_Elec_Pz;

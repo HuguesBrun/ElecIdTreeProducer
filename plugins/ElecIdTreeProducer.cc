@@ -49,7 +49,49 @@ ElecIdTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
     
     /// now start the loop on the electrons:
     for(reco::GsfElectronCollection::const_iterator eleIt = electronsCollection->begin(); eleIt != electronsCollection->end(); eleIt++){
-	cout << "pt=" << eleIt->pt() << endl;
+	     cout << "pt=" << eleIt->pt() << endl;
+        T_Elec_Eta->push_back(eleIt->eta());
+        T_Elec_Phi->push_back(eleIt->phi());
+        T_Elec_Px->push_back(eleIt->px());
+        T_Elec_Py->push_back(eleIt->py());
+        T_Elec_Pz->push_back(eleIt->pz());
+        T_Elec_Pt->push_back(eleIt->pt());
+        T_Elec_Energy->push_back(eleIt->energy());
+        T_Elec_Charge->push_back(eleIt->charge());
+        
+        T_Elec_vx->push_back(eleIt->vx());
+        T_Elec_vy->push_back(eleIt->vy());
+        T_Elec_vz->push_back(eleIt->vz());
+
+        T_Elec_nLost->push_back(eleIt->gsfTrack()->trackerExpectedHitsInner().numberOfLostHits());
+        T_Elec_nHits->push_back(eleIt->gsfTrack()->trackerExpectedHitsInner().numberOfHits());
+        T_Elec_gsfhits->push_back(eleIt->gsfTrack()->numberOfValidHits());
+        T_Elec_gsfchi2->push_back(eleIt->gsfTrack()->normalizedChi2());
+        
+        T_Elec_fbrem->push_back(eleIt->fbrem());
+        T_Elec_nbrems->push_back(eleIt->numberOfBrems());
+       // T_Elec_missingHits->push_back(eleIt->gsfTrack()->trackerExpectedHitsInner());
+        
+        
+        T_Elec_Dist->push_back(eleIt->convDist());
+        T_Elec_Dcot->push_back(eleIt->convDcot());
+        
+        T_Elec_D0->push_back(eleIt->gsfTrack()->d0());
+        T_Elec_Dz->push_back(eleIt->gsfTrack()->dz());
+        //T_Elec_ip3d->push_back(eleIt->gsfTrack().ip3D());
+        /*T_Elec_ip3ds->push_back(eleIt->gsfTrack()->sip3D());*/
+        
+        
+        
+        //all kfStuff
+        bool validKF= false;
+        reco::TrackRef myTrackRef = eleIt->closestTrack();
+        validKF = (myTrackRef.isNonnull());
+        T_Elec_kfchi2->push_back((validKF) ? myTrackRef->normalizedChi2() : 0 );
+        T_Elec_kfhits->push_back((validKF) ? myTrackRef->hitPattern().trackerLayersWithMeasurement() : 0 );
+        
+        
+
     }
 
     mytree_->Fill();
@@ -68,7 +110,8 @@ ElecIdTreeProducer::beginJob()
     mytree_->Branch("T_Event_LuminosityBlock", &T_Event_LuminosityBlock, "T_Event_LuminosityBlock/I");
    
 
-mytree_->Branch("T_Elec_Eta", "std::vector<float>", &T_Elec_Eta);
+    mytree_->Branch("T_Elec_Eta", "std::vector<float>", &T_Elec_Eta);
+    mytree_->Branch("T_Elec_Phi", "std::vector<float>", &T_Elec_Phi);
 mytree_->Branch("T_Elec_Px", "std::vector<float>", &T_Elec_Px);
 mytree_->Branch("T_Elec_Py", "std::vector<float>", &T_Elec_Py);
 mytree_->Branch("T_Elec_Pz", "std::vector<float>", &T_Elec_Pz);
@@ -163,7 +206,8 @@ ElecIdTreeProducer::endJob()
 void 
 ElecIdTreeProducer::beginEvent()
 {
-T_Elec_Eta = new std::vector<float>;
+    T_Elec_Eta = new std::vector<float>;
+    T_Elec_Phi = new std::vector<float>;
 T_Elec_Px = new std::vector<float>;
 T_Elec_Py = new std::vector<float>;
 T_Elec_Pz = new std::vector<float>;
@@ -249,7 +293,8 @@ T_Elec_EcalDriven = new std::vector<int>;
 void
 ElecIdTreeProducer::endEvent()
 {
-delete T_Elec_Eta;
+    delete T_Elec_Eta;
+    delete T_Elec_Phi;
 delete T_Elec_Px;
 delete T_Elec_Py;
 delete T_Elec_Pz;
