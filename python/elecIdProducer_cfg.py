@@ -16,6 +16,7 @@ process.source = cms.Source("PoolSource",
 process.ElecIdTreeProducer = cms.EDAnalyzer('ElecIdTreeProducer',
     isMC                        = cms.bool(False),
     electronsCollection       	= cms.InputTag("gedGsfElectrons","","reRECO"),
+    primaryVertexInputTag   	= cms.InputTag("offlinePrimaryVertices","","reRECO"),
     outputFile		        = cms.string("ElecIDtree.root")
 )
 
