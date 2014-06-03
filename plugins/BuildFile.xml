@@ -16,6 +16,7 @@
 <use   name="TrackingTools/IPTools"/>
 <use   name="RecoEgamma/EgammaTools"/>
 <use   name="EGamma/EGammaAnalysisTools"/>
+<use   name="EgammaAnalysis/ElectronTools"/>
 <use   name="clhep"/>
 <use   name="root"/>
 <use   name="roottmva"/>

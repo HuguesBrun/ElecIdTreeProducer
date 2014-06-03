@@ -41,6 +41,24 @@
 #include "DataFormats/VertexReco/interface/Vertex.h"
 #include "DataFormats/VertexReco/interface/VertexFwd.h"
 
+#include "DataFormats/EcalRecHit/interface/EcalRecHitCollections.h"
+#include "Geometry/CaloTopology/interface/CaloSubdetectorTopology.h"
+#include "Geometry/CaloTopology/interface/CaloTopology.h"
+#include "Geometry/CaloGeometry/interface/CaloGeometry.h"
+#include "Geometry/CaloEventSetup/interface/CaloTopologyRecord.h"
+#include "Geometry/Records/interface/CaloGeometryRecord.h"
+
+#include "EgammaAnalysis/ElectronTools/interface/SuperClusterHelper.h"
+
+#include "DataFormats/BeamSpot/interface/BeamSpot.h"
+#include "RecoEgamma/EgammaTools/interface/ConversionTools.h"
+#include "DataFormats/EgammaCandidates/interface/Conversion.h"
+
+#include "SimDataFormats/GeneratorProducts/interface/HepMCProduct.h"
+#include "SimDataFormats/GeneratorProducts/interface/GenEventInfoProduct.h"
+#include "SimDataFormats/PileupSummaryInfo/interface/PileupSummaryInfo.h"
+
+
 // root stuff !
 #include "TH1D.h"
 #include <map>
@@ -83,9 +101,19 @@ private:
     
     
     // ----------member data ---------------------------
+    bool isGeomInitialized_;
+    const CaloTopology * ecalTopology_;
+    const CaloGeometry * caloGeometry_;
+    
+    
     bool isMC_;
     edm::InputTag electronsCollection_;
     edm::InputTag primaryVertexInputTag_;
+    edm::InputTag EBRecHitsLabel_;
+    edm::InputTag EERecHitsLabel_;
+    edm::InputTag conversionsInputTag_;
+    edm::InputTag beamSpotInputTag_;
+    std::vector<edm::InputTag> rhoInputTags_;
     std::string outputFile_; // output file
     
     
@@ -109,7 +137,10 @@ private:
     int T_Event_nPUm;
     int T_Event_nPUp;
     float T_Event_AveNTruePU;
-    float T_Event_Rho;
+
+    std::vector<float> * T_Event_Rho;
+
+
 
     
     // electron variables
@@ -151,17 +182,16 @@ private:
     
     // tracks calo matching
     std::vector<float> *T_Elec_detacalo;
-    std::vector<float> *T_Elec_eledeta;
     std::vector<float> *T_Elec_dphicalo;
+    std::vector<float> *T_Elec_eledeta;
+    std::vector<float> *T_Elec_eledphi;
     std::vector<float> *T_Elec_deltaPhiIn;
     std::vector<float> *T_Elec_deltaEtaIn;
     std::vector<float> *T_Elec_EoP;
-    std::vector<float> *T_Elec_EoPin;
     std::vector<float> *T_Elec_ESeedoP;
     std::vector<float> *T_Elec_ESeedoPout;
     std::vector<float> *T_Elec_EEleoPout;
     std::vector<float> *T_Elec_IoEmIoP;
-    std::vector<float> *T_Elec_eleEoPout;
 
     
     
@@ -181,15 +211,9 @@ private:
     std::vector<float> *T_Elec_EtaSeed;
     std::vector<float> *T_Elec_PhiSeed;
     std::vector<float> *T_Elec_ESeed;
-    std::vector<int> *T_Elec_IEta;
-    std::vector<int> *T_Elec_IPhi;
 
     
-    //seed Xtal
-    std::vector<float> *T_Elec_EtaSeedXtal;
-    std::vector<float> *T_Elec_PhiSeedXtal;
-    std::vector<float> *T_Elec_IEtaSeedXtal;
-    std::vector<float> *T_Elec_IPhiSeedXtal;
+
     
     // SC shape
     std::vector<float> *T_Elec_HtoE;
