@@ -101,14 +101,29 @@ ElecIdTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
     T_Event_RunNumber = iEvent.id().run();
     T_Event_EventNumber = iEvent.id().event();
     T_Event_LuminosityBlock = iEvent.id().luminosityBlock();
+
     
     //fill rho
-    for (int iteRho = 0 ; iteRho)
+   /* rhoHandles rhos(rhoInputTags_.size());
+    for (unsigned int iteRho = 0 ; iteRho < rhoInputTags_.size() ; iteRho++){
+        iEvent.getByLabel(rhoInputTags_[iteRho], rhos[iteRho]);
+        T_Event_Rho->push_back(*rhos[iteRho]);
+        
+    }*/
+    
+   /* Handle<double> hRho;
+    edm::InputTag tag("ak5PFJets","rho");
+    iEvent.getByLabel(tag,hRho);
+    double Rho = *hRho;
+    cout << "rho=" << Rho << endl;*/
     
     float truePu=0.;
+    int theNbOfGenParticles = 0;
     if (isMC_){
         iEvent.getByLabel("generator", genEvent);
         iEvent.getByLabel( "genParticles", genParticles );
+        theNbOfGenParticles = genParticles->size();
+        
         
         T_Event_processID = genEvent->signalProcessID();
         if ( genEvent->binningValues().size()>0 ) T_Event_ptHat = genEvent->binningValues()[0];
@@ -139,11 +154,73 @@ ElecIdTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
         T_Event_AveNTruePU=truePu;
     }
     
-    
+   // cout << "nbGen=" << theNbOfGenParticles << endl;
     
     /// now start the loop on the electrons:
     for(reco::GsfElectronCollection::const_iterator eleIt = electronsCollection->begin(); eleIt != electronsCollection->end(); eleIt++){
-	     cout << "pt=" << eleIt->pt() << endl;
+     //   cout << "pt=" << eleIt->pt() << endl;
+
+        // if in MC then do the matching with MC particles
+        if (isMC_){
+            int theGenPartRef = -1;
+            for (int iteGen = 0 ; iteGen < theNbOfGenParticles ; iteGen++){
+                const reco::GenParticle & genElectron = (*genParticles)[iteGen];
+                if (fabs(genElectron.pdgId())!=11) continue;
+                 if ((fabs(genElectron.pdgId())==11)&&(genElectron.status()==1)&&(hasWZasMother(genElectron))){
+                     bool matching = isMatchedWithTrigger(genElectron, *eleIt);
+                     if (matching) {
+                         theGenPartRef = iteGen;
+                         break;
+                     }
+                 }
+            }
+            if (theGenPartRef>=0){
+                const reco::GenParticle & genElectron = (*genParticles)[theGenPartRef];
+                T_Gen_Elec_Px->push_back(genElectron.px());
+                T_Gen_Elec_Py->push_back(genElectron.py());
+                T_Gen_Elec_Pz->push_back(genElectron.pz());
+                T_Gen_Elec_Energy->push_back(genElectron.energy());
+                T_Gen_Elec_PDGid->push_back(genElectron.pdgId());
+                if (genElectron.numberOfMothers()>0) {
+                    const reco::Candidate  *part = (genElectron.mother());
+                    const reco::Candidate  *MomPart =(genElectron.mother()); //dummy initialisation :)
+                    // loop on the  particles to check if is has a W has mother
+                    while ((part->numberOfMothers()>0)) {
+                        MomPart =part->mother();
+                        if ((fabs(MomPart->pdgId())>=22)&&(fabs(MomPart->pdgId())<=24)){
+                            break;
+                        }
+                        part = MomPart;
+                    }
+                    T_Gen_Elec_MotherID->push_back(MomPart->pdgId());
+                    if (MomPart->numberOfMothers()>0) {
+                        const reco::Candidate  *grandMa = MomPart->mother();
+                        T_Gen_Elec_GndMotherID->push_back(grandMa->pdgId());
+                    }
+                    else T_Gen_Elec_GndMotherID->push_back(-1);
+                }
+                else {
+                    T_Gen_Elec_MotherID->push_back(-1);
+                    T_Gen_Elec_GndMotherID->push_back(-1);
+                }
+            }
+            else{
+                T_Gen_Elec_Px->push_back(-1);
+                T_Gen_Elec_Py->push_back(-1);
+                T_Gen_Elec_Pz->push_back(-1);
+                T_Gen_Elec_Energy->push_back(-1);
+                T_Gen_Elec_PDGid->push_back(-1);
+                T_Gen_Elec_MotherID->push_back(-1);
+                T_Gen_Elec_GndMotherID->push_back(-1);
+            }
+
+
+        }
+        
+        
+        
+        
+        
         T_Elec_Eta->push_back(eleIt->eta());
         T_Elec_Phi->push_back(eleIt->phi());
         T_Elec_Px->push_back(eleIt->px());
@@ -278,6 +355,13 @@ ElecIdTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
         bool vtxFitConversion = ConversionTools::hasMatchedConversion(*eleIt, conversions_h, beamSpot.position());
         T_Elec_MatchConv->push_back(vtxFitConversion);
         T_Elec_EcalDriven->push_back(eleIt->ecalDrivenSeed());
+        
+        
+        T_Elec_puChargedIso->push_back((*eleIt).pfIsolationVariables().sumChargedHadronPt);
+        T_Elec_allChargedHadronIso->push_back((*eleIt).pfIsolationVariables().sumChargedHadronPt);
+        T_Elec_chargedHadronIso->push_back((*eleIt).pfIsolationVariables().sumChargedHadronPt);
+        T_Elec_neutralHadronIso->push_back((*eleIt).pfIsolationVariables().sumChargedHadronPt);
+        T_Elec_photonIso->push_back((*eleIt).pfIsolationVariables().sumChargedHadronPt);
 
         
     }
@@ -302,6 +386,30 @@ ElecIdTreeProducer::beginJob()
    
 
     mytree_->Branch("T_Event_Rho", "std::vector<float>", &T_Event_Rho);
+    
+    
+    mytree_->Branch("T_Gen_Elec_Px", "std::vector<float>", &T_Gen_Elec_Px);
+    mytree_->Branch("T_Gen_Elec_Py", "std::vector<float>", &T_Gen_Elec_Py);
+    mytree_->Branch("T_Gen_Elec_Pz", "std::vector<float>", &T_Gen_Elec_Pz);
+    mytree_->Branch("T_Gen_Elec_Energy", "std::vector<float>", &T_Gen_Elec_Energy);
+    mytree_->Branch("T_Gen_Elec_PDGid", "std::vector<int>", &T_Gen_Elec_PDGid);
+    mytree_->Branch("T_Gen_Elec_MotherID", "std::vector<int>", &T_Gen_Elec_MotherID);
+    mytree_->Branch("T_Gen_Elec_GndMotherID", "std::vector<int>", &T_Gen_Elec_GndMotherID);
+
+
+    mytree_->Branch("T_Elec_puChargedIso", "std::vector<float>", &T_Elec_puChargedIso);
+    mytree_->Branch("T_Elec_allChargedHadronIso", "std::vector<float>", &T_Elec_allChargedHadronIso);
+    mytree_->Branch("T_Elec_chargedHadronIso", "std::vector<float>", &T_Elec_chargedHadronIso);
+    mytree_->Branch("T_Elec_neutralHadronIso", "std::vector<float>", &T_Elec_neutralHadronIso);
+    mytree_->Branch("T_Elec_photonIso", "std::vector<float>", &T_Elec_photonIso);
+    mytree_->Branch("T_Elec_puChargedIso04", "std::vector<float>", &T_Elec_puChargedIso04);
+    mytree_->Branch("T_Elec_allChargedHadronIso04", "std::vector<float>", &T_Elec_allChargedHadronIso04);
+    mytree_->Branch("T_Elec_chargedHadronIso04", "std::vector<float>", &T_Elec_chargedHadronIso04);
+    mytree_->Branch("T_Elec_neutralHadronIso04", "std::vector<float>", &T_Elec_neutralHadronIso04);
+    mytree_->Branch("T_Elec_photonIso04", "std::vector<float>", &T_Elec_photonIso04);
+
+    
+    
     mytree_->Branch("T_Elec_Eta", "std::vector<float>", &T_Elec_Eta);
     mytree_->Branch("T_Elec_Phi", "std::vector<float>", &T_Elec_Phi);
 mytree_->Branch("T_Elec_Px", "std::vector<float>", &T_Elec_Px);
@@ -392,6 +500,29 @@ void
 ElecIdTreeProducer::beginEvent()
 {
     T_Event_Rho = new std::vector<float>;
+    
+    
+    T_Elec_puChargedIso = new std::vector<float>;
+    T_Elec_allChargedHadronIso = new std::vector<float>;
+    T_Elec_chargedHadronIso = new std::vector<float>;
+    T_Elec_neutralHadronIso = new std::vector<float>;
+    T_Elec_photonIso = new std::vector<float>;
+    
+    T_Elec_puChargedIso04 = new std::vector<float>;
+    T_Elec_allChargedHadronIso04 = new std::vector<float>;
+    T_Elec_chargedHadronIso04 = new std::vector<float>;
+    T_Elec_neutralHadronIso04 = new std::vector<float>;
+    T_Elec_photonIso04 = new std::vector<float>;
+
+    
+    T_Gen_Elec_Px = new std::vector<float>;
+    T_Gen_Elec_Py = new std::vector<float>;
+    T_Gen_Elec_Pz = new std::vector<float>;
+    T_Gen_Elec_Energy = new std::vector<float>;
+    T_Gen_Elec_PDGid = new std::vector<int>;
+    T_Gen_Elec_MotherID = new std::vector<int>;
+    T_Gen_Elec_GndMotherID = new std::vector<int>;
+    
     T_Elec_Eta = new std::vector<float>;
     T_Elec_Phi = new std::vector<float>;
 T_Elec_Px = new std::vector<float>;
@@ -474,6 +605,27 @@ void
 ElecIdTreeProducer::endEvent()
 {
     delete T_Event_Rho;
+    
+    delete T_Elec_puChargedIso;
+    delete T_Elec_allChargedHadronIso;
+    delete T_Elec_chargedHadronIso;
+    delete T_Elec_neutralHadronIso;
+    delete T_Elec_photonIso;
+    delete T_Elec_puChargedIso04;
+    delete T_Elec_allChargedHadronIso04;
+    delete T_Elec_chargedHadronIso04;
+    delete T_Elec_neutralHadronIso04;
+    delete T_Elec_photonIso04;
+    
+    
+    delete T_Gen_Elec_Px;
+    delete T_Gen_Elec_Py;
+    delete T_Gen_Elec_Pz;
+    delete T_Gen_Elec_Energy;
+    delete T_Gen_Elec_PDGid;
+    delete T_Gen_Elec_MotherID;
+    delete T_Gen_Elec_GndMotherID;
+    
     delete T_Elec_Eta;
     delete T_Elec_Phi;
 delete T_Elec_Px;
@@ -594,5 +746,35 @@ ElecIdTreeProducer::fillDescriptions(edm::ConfigurationDescriptions& description
 
 }
 
+bool
+ElecIdTreeProducer::hasWZasMother(const reco::GenParticle  p)
+{
+    bool foundW = false;
+    if (p.numberOfMothers()==0) return foundW;
+    const reco::Candidate  *part = (p.mother());
+    // loop on the mother particles to check if is has a W has mother
+    while ((part->numberOfMothers()>0)) {
+        const reco::Candidate  *MomPart =part->mother();
+        if ((fabs(MomPart->pdgId())>=22)&&(fabs(MomPart->pdgId())<=24)){
+            foundW = true;
+            break;
+        }
+        part = MomPart;
+    }
+    return foundW;
+}
+
+
+
+    
+bool
+ElecIdTreeProducer::isMatchedWithTrigger(reco::GenParticle  p, const reco::GsfElectron &recoElec)
+{
+        float deltaR = sqrt(pow(recoElec.eta()-p.eta(),2)+ pow(acos(cos(recoElec.phi()-p.phi())),2)) ;
+        if (deltaR<0.1) return true;
+        return false;
+}
+
+    
 //define this as a plug-in
 DEFINE_FWK_MODULE(ElecIdTreeProducer);

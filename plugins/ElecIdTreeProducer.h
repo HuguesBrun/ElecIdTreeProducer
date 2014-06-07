@@ -93,6 +93,9 @@ private:
     virtual void endJob() override;
     virtual void beginEvent();
     virtual void endEvent();
+    virtual bool hasWZasMother(const reco::GenParticle);
+    virtual bool isMatchedWithTrigger(reco::GenParticle, const reco::GsfElectron &);
+    
     
     //virtual void beginRun(edm::Run const&, edm::EventSetup const&) override;
     //virtual void endRun(edm::Run const&, edm::EventSetup const&) override;
@@ -144,6 +147,18 @@ private:
 
     
     // electron variables
+    
+    // gen informations
+    // gen info on the electron
+    std::vector<float> *T_Gen_Elec_Px;
+    std::vector<float> *T_Gen_Elec_Py;
+    std::vector<float> *T_Gen_Elec_Pz;
+    std::vector<float> *T_Gen_Elec_Energy;
+    std::vector<int> *T_Gen_Elec_PDGid;
+    std::vector<int> *T_Gen_Elec_MotherID;
+    std::vector<int> *T_Gen_Elec_GndMotherID;
+    
+    
     // kinematics
     std::vector<float> *T_Elec_Eta;
     std::vector<float> *T_Elec_Phi;
@@ -246,6 +261,17 @@ private:
     std::vector<float> *T_Elec_R9;
     
     
+    // isolation stuff
+    std::vector<float> *T_Elec_puChargedIso;
+    std::vector<float> *T_Elec_allChargedHadronIso;
+    std::vector<float> *T_Elec_chargedHadronIso;
+    std::vector<float> *T_Elec_neutralHadronIso;
+    std::vector<float> *T_Elec_photonIso;
+    std::vector<float> *T_Elec_puChargedIso04;
+    std::vector<float> *T_Elec_allChargedHadronIso04;
+    std::vector<float> *T_Elec_chargedHadronIso04;
+    std::vector<float> *T_Elec_neutralHadronIso04;
+    std::vector<float> *T_Elec_photonIso04;
     
     
     
@@ -257,7 +283,10 @@ private:
 
     
     
-    
+
     
 };
+
+typedef std::vector< edm::Handle< double > >   rhoHandles;
+
 
