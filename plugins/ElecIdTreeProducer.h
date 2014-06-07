@@ -59,6 +59,12 @@
 #include "SimDataFormats/PileupSummaryInfo/interface/PileupSummaryInfo.h"
 
 
+#include "HLTrigger/HLTcore/interface/HLTConfigProvider.h"
+#include "DataFormats/Common/interface/TriggerResults.h"
+
+#include "DataFormats/HLTReco/interface/TriggerEvent.h"
+#include "DataFormats/HLTReco/interface/TriggerObject.h"
+
 // root stuff !
 #include "TH1D.h"
 #include <map>
@@ -107,7 +113,8 @@ private:
     bool isGeomInitialized_;
     const CaloTopology * ecalTopology_;
     const CaloGeometry * caloGeometry_;
-    
+
+    HLTConfigProvider hltConfig; 
     
     bool isMC_;
     edm::InputTag electronsCollection_;
@@ -116,8 +123,15 @@ private:
     edm::InputTag EERecHitsLabel_;
     edm::InputTag conversionsInputTag_;
     edm::InputTag beamSpotInputTag_;
+    edm::InputTag triggerResultsTag_;
+    edm::InputTag triggerSummaryLabel_;
     std::vector<edm::InputTag> rhoInputTags_;
+    std::vector<std::string> pathsToSave_;
+    std::string HLTprocess_;
     std::string outputFile_; // output file
+    
+    
+    std::vector<int> triggerBits_;
     
     
     // ---------- output ROOT file
@@ -140,11 +154,15 @@ private:
     int T_Event_nPUm;
     int T_Event_nPUp;
     float T_Event_AveNTruePU;
-
+    
+    
+    
     std::vector<float> * T_Event_Rho;
-
-
-
+    
+    std::vector<int> *T_Event_pathsFired;
+    
+    
+    
     
     // electron variables
     
@@ -168,11 +186,11 @@ private:
     std::vector<float> *T_Elec_Pt;
     std::vector<float> *T_Elec_Energy;
     std::vector<int> *T_Elec_Charge;
-
+    
     //position in ECAL
     std::vector<int> *T_Elec_isEB;
     std::vector<int> *T_Elec_isEE;
-
+    
     
     // tracks
     std::vector<float> *T_Elec_vz;
@@ -193,7 +211,7 @@ private:
     std::vector<float> *T_Elec_Dz;
     std::vector<float> *T_Elec_ip3d;
     std::vector<float> *T_Elec_ip3ds;
-
+    
     
     // tracks calo matching
     std::vector<float> *T_Elec_detacalo;
@@ -207,7 +225,7 @@ private:
     std::vector<float> *T_Elec_ESeedoPout;
     std::vector<float> *T_Elec_EEleoPout;
     std::vector<float> *T_Elec_IoEmIoP;
-
+    
     
     
     //SC
@@ -219,16 +237,16 @@ private:
     std::vector<float> *T_Elec_EsEnergy;
     std::vector<float> *T_Elec_PreShowerOverRaw;
     std::vector<int>   *T_Elec_NClusters;
-
+    
     
     
     //seed Basic clusters
     std::vector<float> *T_Elec_EtaSeed;
     std::vector<float> *T_Elec_PhiSeed;
     std::vector<float> *T_Elec_ESeed;
-
     
-
+    
+    
     
     // SC shape
     std::vector<float> *T_Elec_HtoE;
@@ -273,17 +291,20 @@ private:
     std::vector<float> *T_Elec_neutralHadronIso04;
     std::vector<float> *T_Elec_photonIso04;
     
+    // det based isolation stuff
+    std::vector<float> *T_Elec_ECALiso;
+    std::vector<float> *T_Elec_HCALiso;
+    std::vector<float> *T_Elec_TKiso;
     
     
-    //IP infos
     
     //conversion rejection
     std::vector<int> *T_Elec_MatchConv;
     std::vector<int> *T_Elec_EcalDriven;
-
     
     
-
+    
+    
     
 };
 
