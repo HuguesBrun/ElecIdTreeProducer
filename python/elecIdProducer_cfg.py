@@ -38,9 +38,9 @@ process.ElecIdTreeProducer = cms.EDAnalyzer('ElecIdTreeProducer',
     rechitCollectionEE   	= cms.InputTag("reducedEcalRecHitsEE","",typeProcess),
     conversionsCollection   = cms.InputTag("allConversions","",typeProcess),
     beamSpotInputTag   = cms.InputTag("offlineBeamSpot","",typeProcess),
-    rhoTags =               cms.VInputTag(cms.InputTag("ak5CaloJets","rho",""),
-                                          cms.InputTag("ak5PFJets","rho","")),
-                                            
+    rhoTags =               cms.VInputTag(cms.InputTag("kt6PFJetsForIsolation","rho","runAnalyzer")),
+    metTag     = cms.InputTag("pfMet", "", typeProcess),
+    jetCollectionTag     = cms.InputTag("ak5PFJets", "", typeProcess),
     triggerResultTag     = cms.InputTag("TriggerResults", "", "HLT"),
     triggerSummaryTag    = cms.InputTag("hltTriggerSummaryAOD", "", "HLT"),
     pathsToSave           =cms.vstring("HLT_Ele17_CaloIdT_CaloIsoVL_TrkIdVL_TrkIsoVL_Ele8_CaloIdT_CaloIsoVL_TrkIdVL_TrkIsoVL_v",
@@ -53,7 +53,11 @@ process.ElecIdTreeProducer = cms.EDAnalyzer('ElecIdTreeProducer',
 )
 
 
-
+# to compute FastJet rho to correct isolation (note: EtaMax restricted to 2.5)
+# all the analyses
+from RecoJets.JetProducers.kt4PFJets_cfi import *
+process.kt6PFJetsForIsolation = kt4PFJets.clone( rParam = 0.6, doRhoFastjet = True )
+process.kt6PFJetsForIsolation.Rho_EtaMax = cms.double(2.5)
 
 
 
@@ -63,4 +67,4 @@ if (isMC):
     process.ElecIdTreeProducer.isMC = cms.bool(True)
 
 
-process.p = cms.Path(process.ElecIdTreeProducer)
+process.p = cms.Path(process.kt6PFJetsForIsolation*process.ElecIdTreeProducer)

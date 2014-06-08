@@ -16,6 +16,8 @@ ElecIdTreeProducer::ElecIdTreeProducer(const edm::ParameterSet& iConfig)
     conversionsInputTag_ = iConfig.getParameter<edm::InputTag>("conversionsCollection");
     beamSpotInputTag_ = iConfig.getParameter<edm::InputTag>("beamSpotInputTag");
     rhoInputTags_ = iConfig.getParameter<std::vector<edm::InputTag> >("rhoTags");
+    metTag_ = iConfig.getParameter<edm::InputTag>("metTag");
+    jetCollectionTag_= iConfig.getParameter<edm::InputTag>("jetCollectionTag");
     triggerResultsTag_ = iConfig.getParameter<edm::InputTag>("triggerResultTag");
     triggerSummaryLabel_= iConfig.getParameter<edm::InputTag>("triggerSummaryTag");
     pathsToSave_ = iConfig.getParameter<std::vector<std::string> >("pathsToSave");
@@ -87,6 +89,15 @@ ElecIdTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
     TransientTrackBuilder thebuilder = *(builder.product());
     
     
+    // Jet
+    edm::Handle < std::vector <reco::PFJet> > recoPFJets;
+    iEvent.getByLabel(jetCollectionTag_, recoPFJets);
+    int nJets = recoPFJets->size();
+    
+    //mEt collection
+    edm::Handle<reco::PFMETCollection> metPF;
+    iEvent.getByLabel(metTag_,metPF);
+    const reco::PFMET * metsPF= &((metPF.product())->front());
     
     
     //initialize the ECAL geom, if not yet done
@@ -109,12 +120,11 @@ ElecIdTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
     
     
     //fill rho
-    /* rhoHandles rhos(rhoInputTags_.size());
+     rhoHandles rhos(rhoInputTags_.size());
      for (unsigned int iteRho = 0 ; iteRho < rhoInputTags_.size() ; iteRho++){
-     iEvent.getByLabel(rhoInputTags_[iteRho], rhos[iteRho]);
-     T_Event_Rho->push_back(*rhos[iteRho]);
-     
-     }*/
+         iEvent.getByLabel(rhoInputTags_[iteRho], rhos[iteRho]);
+         T_Event_Rho->push_back(*rhos[iteRho]);
+     }
     
     /* Handle<double> hRho;
      edm::InputTag tag("ak5PFJets","rho");
@@ -218,8 +228,6 @@ ElecIdTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
                 legRefs.push_back(iteFilter);
             }
         }
-        cout << "legObjects size=" << legObjects.size() << endl;
-        cout << "legRef size=" << legRefs.size() << endl;
     }
     
     // cout << "nbGen=" << theNbOfGenParticles << endl;
@@ -285,7 +293,6 @@ ElecIdTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
             
         }
         
-       cout << "ele Pt=" << eleIt->pt() << endl; 
         //now look if the electron is matched with trigger
         //FIXME remove the double couting
         int theLegInfo = 0;
@@ -294,17 +301,14 @@ ElecIdTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
             for (unsigned int i = 0 ; i < legObjects.size() ; i++){
                 if (legRefs.at(i)==iteTrigObj) continue;
                 float deltaR = sqrt(pow(legObjects[i].eta()-eleIt->eta(),2)+ pow(acos(cos(legObjects[i].phi()-eleIt->phi())),2)) ;
-		cout << "before leg matching deltaR=" << deltaR << endl;
                 if (deltaR<0.1) {
                     foundTheLeg = true;
                 }
             }
             if (foundTheLeg){
-            cout << "found the leg " << iteTrigObj << endl;
             theLegInfo += std::pow(2,iteTrigObj);
             }
         }
-        cout << "will save " << theLegInfo << endl;
         T_Elec_TriggerLeg->push_back(theLegInfo);
         
         T_Elec_Eta->push_back(eleIt->eta());
@@ -457,6 +461,28 @@ ElecIdTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
         
     }
     
+    //save the jets
+    for (int k = 0 ; k < nJets ; k++){
+        const reco::Jet* jet = (const reco::Jet*) ( & ((*recoPFJets)[k]) );
+        T_Jet_Px->push_back(jet->px());
+        T_Jet_Py->push_back(jet->py());
+        T_Jet_Pz->push_back(jet->pz());
+        T_Jet_Et->push_back(jet->et());
+        T_Jet_Eta->push_back(jet->eta());
+        T_Jet_Energy->push_back(jet->energy());
+        T_Jet_Phi->push_back(jet->phi());
+    }
+    
+    
+    //save the met
+    T_METPF_ET = metsPF[0].pt();
+    T_METPF_px = metsPF[0].px();
+    T_METPF_py = metsPF[0].py();
+    T_METPF_Phi = metsPF[0].phi();
+    T_METPF_Sig = metsPF[0].significance();
+   // T_METPFTypeI_ET =
+ //   T_METPFTypeI_Phi =
+    
     mytree_->Fill();
     
     endEvent();
@@ -587,6 +613,26 @@ ElecIdTreeProducer::beginJob()
     mytree_->Branch("T_Elec_TKiso", "std::vector<float>", &T_Elec_TKiso);
     
     
+    //jets
+    mytree_->Branch("T_Jet_Px", "std::vector<float>", &T_Jet_Px);
+    mytree_->Branch("T_Jet_Py", "std::vector<float>", &T_Jet_Py);
+    mytree_->Branch("T_Jet_Pz", "std::vector<float>", &T_Jet_Pz);
+    mytree_->Branch("T_Jet_Et", "std::vector<float>", &T_Jet_Et);
+    mytree_->Branch("T_Jet_Eta", "std::vector<float>", &T_Jet_Eta);
+    mytree_->Branch("T_Jet_Energy", "std::vector<float>", &T_Jet_Energy);
+    mytree_->Branch("T_Jet_Phi", "std::vector<float>", &T_Jet_Phi);
+    
+    
+    //MET
+    mytree_->Branch("T_METPF_ET", &T_METPF_ET, "T_METPF_ET/F");
+    mytree_->Branch("T_METPF_px", &T_METPF_px, "T_METPF_px/F");
+    mytree_->Branch("T_METPF_py", &T_METPF_py, "T_METPF_py/F");
+    mytree_->Branch("T_METPF_Phi", &T_METPF_Phi, "T_METPF_Phi/F");
+    mytree_->Branch("T_METPF_Sig", &T_METPF_Sig, "T_METPF_Sig/F");
+    mytree_->Branch("T_METPFTypeI_ET", &T_METPFTypeI_ET, "T_METPFTypeI_ET/F");
+    mytree_->Branch("T_METPFTypeI_Phi", &T_METPFTypeI_Phi, "T_METPFTypeI_Phi/F");
+
+
 }
 
 // ------------ method called once each job just after ending the event loop  ------------
@@ -711,6 +757,15 @@ ElecIdTreeProducer::beginEvent()
     T_Elec_HCALiso = new std::vector<float>;
     T_Elec_TKiso = new std::vector<float>;
     
+    T_Jet_Px = new std::vector<float>;
+    T_Jet_Py = new std::vector<float>;
+    T_Jet_Pz = new std::vector<float>;
+    T_Jet_Et = new std::vector<float>;
+    T_Jet_Eta = new std::vector<float>;
+    T_Jet_Energy = new std::vector<float>;
+    T_Jet_Phi = new std::vector<float>;
+
+    
 }
 void
 ElecIdTreeProducer::endEvent()
@@ -822,6 +877,16 @@ ElecIdTreeProducer::endEvent()
     delete T_Elec_ECALiso;
     delete T_Elec_HCALiso;
     delete T_Elec_TKiso;
+    
+    delete T_Jet_Px;
+    delete T_Jet_Py;
+    delete T_Jet_Pz;
+    delete T_Jet_Et;
+    delete T_Jet_Eta;
+    delete T_Jet_Energy;
+    delete T_Jet_Phi;
+
+    
 }
 
 

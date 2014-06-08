@@ -54,6 +54,17 @@
 #include "RecoEgamma/EgammaTools/interface/ConversionTools.h"
 #include "DataFormats/EgammaCandidates/interface/Conversion.h"
 
+#include "DataFormats/METReco/interface/CaloMET.h"
+#include "DataFormats/METReco/interface/PFMET.h"
+#include "DataFormats/METReco/interface/PFMETFwd.h"
+#include "DataFormats/METReco/interface/GenMET.h"
+#include "DataFormats/METReco/interface/GenMETFwd.h"
+#include "DataFormats/METReco/interface/CaloMETFwd.h"
+
+#include "DataFormats/JetReco/interface/PFJet.h"
+#include "CondFormats/JetMETObjects/interface/JetCorrectorParameters.h"
+#include "CondFormats/JetMETObjects/interface/FactorizedJetCorrector.h"
+
 #include "SimDataFormats/GeneratorProducts/interface/HepMCProduct.h"
 #include "SimDataFormats/GeneratorProducts/interface/GenEventInfoProduct.h"
 #include "SimDataFormats/PileupSummaryInfo/interface/PileupSummaryInfo.h"
@@ -123,6 +134,8 @@ private:
     edm::InputTag EERecHitsLabel_;
     edm::InputTag conversionsInputTag_;
     edm::InputTag beamSpotInputTag_;
+    edm::InputTag metTag_;
+    edm::InputTag jetCollectionTag_;
     edm::InputTag triggerResultsTag_;
     edm::InputTag triggerSummaryLabel_;
     std::vector<edm::InputTag> rhoInputTags_;
@@ -300,15 +313,29 @@ private:
     std::vector<float> *T_Elec_HCALiso;
     std::vector<float> *T_Elec_TKiso;
     
-    
+
     
     //conversion rejection
     std::vector<int> *T_Elec_MatchConv;
     std::vector<int> *T_Elec_EcalDriven;
     
+    //jets and met
+    std::vector<float> *T_Jet_Px;
+    std::vector<float> *T_Jet_Py;
+    std::vector<float> *T_Jet_Pz;
+    std::vector<float> *T_Jet_Et;
+    std::vector<float> *T_Jet_Eta;
+    std::vector<float> *T_Jet_Energy;
+    std::vector<float> *T_Jet_Phi;
     
-    
-    
+    //met of the event
+    float T_METPF_ET;
+    float T_METPF_px;
+    float T_METPF_py;
+    float T_METPF_Phi;
+    float T_METPF_Sig;
+    float T_METPFTypeI_ET;
+    float T_METPFTypeI_Phi;
     
 };
 
