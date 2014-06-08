@@ -290,14 +290,18 @@ ElecIdTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
         //FIXME remove the double couting
         int theLegInfo = 0;
         for (unsigned int iteTrigObj = 0 ; iteTrigObj < filterToMatch_.size() ; iteTrigObj++){
+            bool foundTheLeg = false;
             for (unsigned int i = 0 ; i < legObjects.size() ; i++){
                 if (legRefs.at(i)==iteTrigObj) continue;
                 float deltaR = sqrt(pow(legObjects[i].eta()-eleIt->eta(),2)+ pow(acos(cos(legObjects[i].phi()-eleIt->phi())),2)) ;
 		cout << "before leg matching deltaR=" << deltaR << endl;
                 if (deltaR<0.1) {
-                    cout << "found the leg " << iteTrigObj << endl;
-                    theLegInfo += std::pow(2,iteTrigObj);
+                    foundTheLeg = true;
                 }
+            }
+            if (foundTheLeg){
+            cout << "found the leg " << iteTrigObj << endl;
+            theLegInfo += std::pow(2,iteTrigObj);
             }
         }
         cout << "will save " << theLegInfo << endl;
