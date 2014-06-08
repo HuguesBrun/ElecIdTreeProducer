@@ -19,6 +19,7 @@ ElecIdTreeProducer::ElecIdTreeProducer(const edm::ParameterSet& iConfig)
     triggerResultsTag_ = iConfig.getParameter<edm::InputTag>("triggerResultTag");
     triggerSummaryLabel_= iConfig.getParameter<edm::InputTag>("triggerSummaryTag");
     pathsToSave_ = iConfig.getParameter<std::vector<std::string> >("pathsToSave");
+    filterToMatch_ = iConfig.getParameter<std::vector<std::string> >("filterToMatch");
     HLTprocess_   = iConfig.getParameter<std::string>("HLTprocess");
     outputFile_   = iConfig.getParameter<std::string>("outputFile");
     rootFile_ = TFile::Open(outputFile_.c_str(),"RECREATE");
@@ -186,13 +187,39 @@ ElecIdTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
     edm::Handle<edm::TriggerResults> triggerResults;
     iEvent.getByLabel(triggerResultsTag_, triggerResults);
     
-    edm::Handle<trigger::TriggerEvent> triggerSummary;
-    iEvent.getByLabel(triggerSummaryLabel_, triggerSummary);
+
 
     
     for (unsigned int itePath = 0 ; itePath < triggerBits_.size() ; itePath++){
-        if (triggerResults->accept(triggerBits_.at(itePath))) T_Event_pathsFired->push_back(1);
+        if (triggerResults->accept(triggerBits_.at(itePath))) {
+		T_Event_pathsFired->push_back(1);
+		cout << "on passe " << itePath << endl;
+	}
         else T_Event_pathsFired->push_back(0);
+    }
+    
+    
+    edm::Handle<trigger::TriggerEvent> triggerSummary;
+    iEvent.getByLabel(triggerSummaryLabel_, triggerSummary);
+    trigger::TriggerObjectCollection allTriggerObjects = triggerSummary->getObjects();
+    trigger::TriggerObjectCollection legObjects;
+    std::vector<unsigned int> legRefs;
+    // find the ref of the legs
+    for (size_t iteFilter=0; iteFilter<filterToMatch_.size(); iteFilter++) {
+	edm::InputTag filterTag = edm::InputTag(filterToMatch_.at(iteFilter), "", "HLT");
+        size_t filterIndex = (*triggerSummary).filterIndex(filterTag);
+        if (filterIndex < (*triggerSummary).sizeFilters()) { //check if the trigger object is present
+            cout << "filter " << filterIndex << " found " << endl;
+            //save the trigger objects corresponding to muon leg
+            const trigger::Keys &keys = (*triggerSummary).filterKeys(filterIndex);
+            for (size_t j = 0; j < keys.size(); j++) {
+                trigger::TriggerObject foundObject = (allTriggerObjects)[keys[j]];
+                legObjects.push_back(foundObject);
+                legRefs.push_back(iteFilter);
+            }
+        }
+        cout << "legObjects size=" << legObjects.size() << endl;
+        cout << "legRef size=" << legRefs.size() << endl;
     }
     
     // cout << "nbGen=" << theNbOfGenParticles << endl;
@@ -208,7 +235,7 @@ ElecIdTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
                 const reco::GenParticle & genElectron = (*genParticles)[iteGen];
                 if (fabs(genElectron.pdgId())!=11) continue;
                 if ((fabs(genElectron.pdgId())==11)&&(genElectron.status()==1)&&(hasWZasMother(genElectron))){
-                    bool matching = isMatchedWithTrigger(genElectron, *eleIt);
+                    bool matching = isMatchedWithGen(genElectron, *eleIt);
                     if (matching) {
                         theGenPartRef = iteGen;
                         break;
@@ -258,9 +285,23 @@ ElecIdTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
             
         }
         
-        
-        
-        
+       cout << "ele Pt=" << eleIt->pt() << endl; 
+        //now look if the electron is matched with trigger
+        //FIXME remove the double couting
+        int theLegInfo = 0;
+        for (unsigned int iteTrigObj = 0 ; iteTrigObj < filterToMatch_.size() ; iteTrigObj++){
+            for (unsigned int i = 0 ; i < legObjects.size() ; i++){
+                if (legRefs.at(i)==iteTrigObj) continue;
+                float deltaR = sqrt(pow(legObjects[i].eta()-eleIt->eta(),2)+ pow(acos(cos(legObjects[i].phi()-eleIt->phi())),2)) ;
+		cout << "before leg matching deltaR=" << deltaR << endl;
+                if (deltaR<0.1) {
+                    cout << "found the leg " << iteTrigObj << endl;
+                    theLegInfo += std::pow(2,iteTrigObj);
+                }
+            }
+        }
+        cout << "will save " << theLegInfo << endl;
+        T_Elec_TriggerLeg->push_back(theLegInfo);
         
         T_Elec_Eta->push_back(eleIt->eta());
         T_Elec_Phi->push_back(eleIt->phi());
@@ -445,6 +486,8 @@ ElecIdTreeProducer::beginJob()
     mytree_->Branch("T_Gen_Elec_GndMotherID", "std::vector<int>", &T_Gen_Elec_GndMotherID);
     
     
+    mytree_->Branch("T_Elec_TriggerLeg", "std::vector<int>", &T_Elec_TriggerLeg);
+    
     mytree_->Branch("T_Elec_puChargedIso", "std::vector<float>", &T_Elec_puChargedIso);
     mytree_->Branch("T_Elec_allChargedHadronIso", "std::vector<float>", &T_Elec_allChargedHadronIso);
     mytree_->Branch("T_Elec_chargedHadronIso", "std::vector<float>", &T_Elec_chargedHadronIso);
@@ -579,6 +622,8 @@ ElecIdTreeProducer::beginEvent()
     T_Gen_Elec_MotherID = new std::vector<int>;
     T_Gen_Elec_GndMotherID = new std::vector<int>;
     
+    T_Elec_TriggerLeg = new std::vector<int>;
+    
     T_Elec_Eta = new std::vector<float>;
     T_Elec_Phi = new std::vector<float>;
     T_Elec_Px = new std::vector<float>;
@@ -689,6 +734,8 @@ ElecIdTreeProducer::endEvent()
     delete T_Gen_Elec_PDGid;
     delete T_Gen_Elec_MotherID;
     delete T_Gen_Elec_GndMotherID;
+    
+    delete T_Elec_TriggerLeg;
     
     delete T_Elec_Eta;
     delete T_Elec_Phi;
@@ -836,12 +883,13 @@ ElecIdTreeProducer::hasWZasMother(const reco::GenParticle  p)
 
 
 bool
-ElecIdTreeProducer::isMatchedWithTrigger(reco::GenParticle  p, const reco::GsfElectron &recoElec)
+ElecIdTreeProducer::isMatchedWithGen(reco::GenParticle  p, const reco::GsfElectron &recoElec)
 {
     float deltaR = sqrt(pow(recoElec.eta()-p.eta(),2)+ pow(acos(cos(recoElec.phi()-p.phi())),2)) ;
     if (deltaR<0.1) return true;
     return false;
 }
+
 
 
 //define this as a plug-in

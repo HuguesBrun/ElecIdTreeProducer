@@ -40,10 +40,14 @@ process.ElecIdTreeProducer = cms.EDAnalyzer('ElecIdTreeProducer',
     beamSpotInputTag   = cms.InputTag("offlineBeamSpot","",typeProcess),
     rhoTags =               cms.VInputTag(cms.InputTag("ak5CaloJets","rho",""),
                                           cms.InputTag("ak5PFJets","rho","")),
+                                            
     triggerResultTag     = cms.InputTag("TriggerResults", "", "HLT"),
     triggerSummaryTag    = cms.InputTag("hltTriggerSummaryAOD", "", "HLT"),
     pathsToSave           =cms.vstring("HLT_Ele17_CaloIdT_CaloIsoVL_TrkIdVL_TrkIsoVL_Ele8_CaloIdT_CaloIsoVL_TrkIdVL_TrkIsoVL_v",
                                        "HLT_Ele17_CaloIdT_CaloIsoVL_TrkIdVL_TrkIsoVL_v"),
+    filterToMatch           =cms.vstring("hltEle17TightIdLooseIsoEle8TightIdLooseIsoTrackIsoFilter",
+                                         "hltEle17TightIdLooseIsoEle8TightIdLooseIsoTrackIsoDoubleFilter",
+                                         "hltEle17CaloIdTCaloIsoVLTrkIdVLTrkIsoVLTrackIsoFilter"),
     HLTprocess            = cms.string("HLT"),
     outputFile		        = cms.string("ElecIDtree.root")
 )

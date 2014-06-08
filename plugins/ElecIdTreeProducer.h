@@ -100,8 +100,8 @@ private:
     virtual void beginEvent();
     virtual void endEvent();
     virtual bool hasWZasMother(const reco::GenParticle);
-    virtual bool isMatchedWithTrigger(reco::GenParticle, const reco::GsfElectron &);
-    
+    virtual bool isMatchedWithGen(reco::GenParticle, const reco::GsfElectron &);
+
     
     //virtual void beginRun(edm::Run const&, edm::EventSetup const&) override;
     //virtual void endRun(edm::Run const&, edm::EventSetup const&) override;
@@ -127,6 +127,7 @@ private:
     edm::InputTag triggerSummaryLabel_;
     std::vector<edm::InputTag> rhoInputTags_;
     std::vector<std::string> pathsToSave_;
+    std::vector<std::string> filterToMatch_;
     std::string HLTprocess_;
     std::string outputFile_; // output file
     
@@ -176,6 +177,9 @@ private:
     std::vector<int> *T_Gen_Elec_MotherID;
     std::vector<int> *T_Gen_Elec_GndMotherID;
     
+    //trigger leg
+    std::vector<int> *T_Elec_TriggerLeg;
+
     
     // kinematics
     std::vector<float> *T_Elec_Eta;
