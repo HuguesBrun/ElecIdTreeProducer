@@ -203,7 +203,6 @@ ElecIdTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
     for (unsigned int itePath = 0 ; itePath < triggerBits_.size() ; itePath++){
         if (triggerResults->accept(triggerBits_.at(itePath))) {
 		T_Event_pathsFired->push_back(1);
-		cout << "on passe " << itePath << endl;
 	}
         else T_Event_pathsFired->push_back(0);
     }
@@ -219,7 +218,6 @@ ElecIdTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
 	edm::InputTag filterTag = edm::InputTag(filterToMatch_.at(iteFilter), "", "HLT");
         size_t filterIndex = (*triggerSummary).filterIndex(filterTag);
         if (filterIndex < (*triggerSummary).sizeFilters()) { //check if the trigger object is present
-            cout << "filter " << filterIndex << " found " << endl;
             //save the trigger objects corresponding to muon leg
             const trigger::Keys &keys = (*triggerSummary).filterKeys(filterIndex);
             for (size_t j = 0; j < keys.size(); j++) {
@@ -447,11 +445,11 @@ ElecIdTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
         T_Elec_EcalDriven->push_back(eleIt->ecalDrivenSeed());
         
         
-        T_Elec_puChargedIso->push_back((*eleIt).pfIsolationVariables().sumChargedHadronPt);
-        T_Elec_allChargedHadronIso->push_back((*eleIt).pfIsolationVariables().sumChargedHadronPt);
+        T_Elec_puChargedIso->push_back((*eleIt).pfIsolationVariables().sumChargedParticlePt);
+        T_Elec_allChargedHadronIso->push_back((*eleIt).pfIsolationVariables().sumPUPt);
         T_Elec_chargedHadronIso->push_back((*eleIt).pfIsolationVariables().sumChargedHadronPt);
-        T_Elec_neutralHadronIso->push_back((*eleIt).pfIsolationVariables().sumChargedHadronPt);
-        T_Elec_photonIso->push_back((*eleIt).pfIsolationVariables().sumChargedHadronPt);
+        T_Elec_neutralHadronIso->push_back((*eleIt).pfIsolationVariables().sumNeutralHadronEt);
+        T_Elec_photonIso->push_back((*eleIt).pfIsolationVariables().sumPhotonEt);
         
         
         T_Elec_ECALiso->push_back(eleIt->dr03EcalRecHitSumEt());
