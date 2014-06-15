@@ -41,6 +41,13 @@
 #include "DataFormats/VertexReco/interface/Vertex.h"
 #include "DataFormats/VertexReco/interface/VertexFwd.h"
 
+#include "DataFormats/CaloRecHit/interface/CaloCluster.h"
+#include "DataFormats/CaloRecHit/interface/CaloClusterFwd.h"
+
+#include "DataFormats/EgammaReco/interface/SuperCluster.h"
+#include "DataFormats/EgammaReco/interface/SuperClusterFwd.h"
+
+
 #include "DataFormats/EcalRecHit/interface/EcalRecHitCollections.h"
 #include "Geometry/CaloTopology/interface/CaloSubdetectorTopology.h"
 #include "Geometry/CaloTopology/interface/CaloTopology.h"
@@ -49,6 +56,8 @@
 #include "Geometry/Records/interface/CaloGeometryRecord.h"
 
 #include "EgammaAnalysis/ElectronTools/interface/SuperClusterHelper.h"
+#include "RecoEcal/EgammaCoreTools/interface/EcalClusterLazyTools.h"
+
 
 #include "DataFormats/BeamSpot/interface/BeamSpot.h"
 #include "RecoEgamma/EgammaTools/interface/ConversionTools.h"
@@ -296,6 +305,16 @@ private:
     std::vector<float> *T_Elec_R9;
     
     
+    std::vector<float> *T_Elec_noZSsee;
+    std::vector<float> *T_Elec_noZSspp;
+    std::vector<float> *T_Elec_noZSsep;
+    std::vector<float> *T_Elec_noZSr9;
+    std::vector<float> *T_Elec_noZSe1x5;
+    std::vector<float> *T_Elec_noZSe2x5MaxSeed;
+    std::vector<float> *T_Elec_noZSe5x5;
+    
+    
+    
     // isolation stuff
     std::vector<float> *T_Elec_puChargedIso;
     std::vector<float> *T_Elec_allChargedHadronIso;
@@ -313,6 +332,18 @@ private:
     std::vector<float> *T_Elec_HCALiso;
     std::vector<float> *T_Elec_TKiso;
     
+    
+    // infos on the BCs
+    std::vector<int> *T_Elec_nbBC;
+    std::vector<float> *T_Elec_BC1_eta;
+    std::vector<float> *T_Elec_BC1_phi;
+    std::vector<float> *T_Elec_BC1_energy;
+    std::vector<float> *T_Elec_BC2_eta;
+    std::vector<float> *T_Elec_BC2_phi;
+    std::vector<float> *T_Elec_BC2_energy;
+    std::vector<float> *T_Elec_BC3_eta;
+    std::vector<float> *T_Elec_BC3_phi;
+    std::vector<float> *T_Elec_BC3_energy;
 
     
     //conversion rejection
@@ -327,6 +358,8 @@ private:
     std::vector<float> *T_Jet_Eta;
     std::vector<float> *T_Jet_Energy;
     std::vector<float> *T_Jet_Phi;
+    
+
     
     //met of the event
     float T_METPF_ET;

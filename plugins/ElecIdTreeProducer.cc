@@ -71,10 +71,10 @@ ElecIdTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
     
     
     //load the RecHits
-    edm::Handle< EcalRecHitCollection > EBRecHits;
+  /*  edm::Handle< EcalRecHitCollection > EBRecHits;
     iEvent.getByLabel(EBRecHitsLabel_ , EBRecHits);
     edm::Handle< EcalRecHitCollection > EERecHits;
-    iEvent.getByLabel(EERecHitsLabel_ , EERecHits);
+    iEvent.getByLabel(EERecHitsLabel_ , EERecHits);*/
     
     
     // handles to gen infos
@@ -126,11 +126,10 @@ ElecIdTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
          T_Event_Rho->push_back(*rhos[iteRho]);
      }
     
-    /* Handle<double> hRho;
-     edm::InputTag tag("ak5PFJets","rho");
-     iEvent.getByLabel(tag,hRho);
-     double Rho = *hRho;
-     cout << "rho=" << Rho << endl;*/
+
+    noZS::EcalClusterLazyTools lazyToolsNoZS(iEvent, iSetup, EBRecHitsLabel_, EERecHitsLabel_);
+    EcalClusterLazyTools lazyTools(iEvent, iSetup, EBRecHitsLabel_, EERecHitsLabel_);
+
     
     float truePu=0.;
     int theNbOfGenParticles = 0;
@@ -232,7 +231,7 @@ ElecIdTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
     
     /// now start the loop on the electrons:
     for(reco::GsfElectronCollection::const_iterator eleIt = electronsCollection->begin(); eleIt != electronsCollection->end(); eleIt++){
-        //   cout << "pt=" << eleIt->pt() << endl;
+          //cout << "pt=" << eleIt->pt() << endl;
         
         // if in MC then do the matching with MC particles
         if (isMC_){
@@ -403,46 +402,63 @@ ElecIdTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
         
         T_Elec_HtoE->push_back(eleIt->hadronicOverEm());
         
-        const EcalRecHitCollection * recHits=0;
+        /*const EcalRecHitCollection * recHits=0;
         if( eleIt->isEB() ) recHits = EBRecHits.product();
-        else recHits = EERecHits.product();
+        else recHits = EERecHits.product();*/
         
-        SuperClusterHelper mySCHelper( &(*eleIt), recHits, ecalTopology_, caloGeometry_ );
+     /*   SuperClusterHelper mySCHelper( &(*eleIt), recHits, ecalTopology_, caloGeometry_ );*/
+        const auto & seedCluster = eleIt->superCluster()->seed();
+
+      
+      
+        T_Elec_EmaxSeed->push_back((eleIt->superCluster()->energy()>0) ? lazyTools.eMax(*seedCluster) / eleIt->superCluster()->energy() : -1);
+        T_Elec_EtopSeed->push_back((eleIt->superCluster()->energy()>0) ? lazyTools.eTop(*seedCluster) / eleIt->superCluster()->energy() : -1);
+        T_Elec_EbottomSeed->push_back((eleIt->superCluster()->energy()>0) ? lazyTools.eBottom(*seedCluster) / eleIt->superCluster()->energy() : -1);
+        T_Elec_EleftSeed->push_back((eleIt->superCluster()->energy()>0) ? lazyTools.eLeft(*seedCluster) / eleIt->superCluster()->energy() : -1);
+        T_Elec_ErightSeed->push_back((eleIt->superCluster()->energy()>0) ? lazyTools.eRight(*seedCluster) / eleIt->superCluster()->energy() : -1);
+        T_Elec_E2ndSeed->push_back((eleIt->superCluster()->energy()>0) ? lazyTools.e2nd(*seedCluster) / eleIt->superCluster()->energy() : -1);
         
-        T_Elec_EmaxSeed->push_back((eleIt->superCluster()->energy()>0) ? mySCHelper.eMax() / eleIt->superCluster()->energy() : -1);
-        T_Elec_EtopSeed->push_back((eleIt->superCluster()->energy()>0) ? mySCHelper.eTop() / eleIt->superCluster()->energy() : -1);
-        T_Elec_EbottomSeed->push_back((eleIt->superCluster()->energy()>0) ? mySCHelper.eBottom() / eleIt->superCluster()->energy() : -1);
-        T_Elec_EleftSeed->push_back((eleIt->superCluster()->energy()>0) ? mySCHelper.eLeft() / eleIt->superCluster()->energy() : -1);
-        T_Elec_ErightSeed->push_back((eleIt->superCluster()->energy()>0) ? mySCHelper.eRight() / eleIt->superCluster()->energy() : -1);
-        T_Elec_E2ndSeed->push_back((eleIt->superCluster()->energy()>0) ? mySCHelper.e2nd() / eleIt->superCluster()->energy() : -1);
         
         
-        
-        T_Elec_E2x5RightSeed->push_back((eleIt->superCluster()->energy()>0) ? mySCHelper.e2x5Right() / eleIt->superCluster()->energy() : -1);
-        T_Elec_E2x5LeftSeed->push_back((eleIt->superCluster()->energy()>0) ? mySCHelper.e2x5Left() / eleIt->superCluster()->energy() : -1);
-        T_Elec_E2x5TopSeed->push_back((eleIt->superCluster()->energy()>0) ? mySCHelper.e2x5Top() / eleIt->superCluster()->energy() : -1);
-        T_Elec_E2x5BottomSeed->push_back((eleIt->superCluster()->energy()>0) ? mySCHelper.e2x5Bottom() / eleIt->superCluster()->energy() : -1);
-        T_Elec_E2x5MaxSeed->push_back((eleIt->superCluster()->energy()>0) ? mySCHelper.e2x5Max() / eleIt->superCluster()->energy() : -1);
+        T_Elec_E2x5RightSeed->push_back((eleIt->superCluster()->energy()>0) ? lazyTools.e2x5Right(*seedCluster) / eleIt->superCluster()->energy() : -1);
+        T_Elec_E2x5LeftSeed->push_back((eleIt->superCluster()->energy()>0) ? lazyTools.e2x5Left(*seedCluster) / eleIt->superCluster()->energy() : -1);
+        T_Elec_E2x5TopSeed->push_back((eleIt->superCluster()->energy()>0) ? lazyTools.e2x5Top(*seedCluster) / eleIt->superCluster()->energy() : -1);
+        T_Elec_E2x5BottomSeed->push_back((eleIt->superCluster()->energy()>0) ? lazyTools.e2x5Bottom(*seedCluster) / eleIt->superCluster()->energy() : -1);
+        T_Elec_E2x5MaxSeed->push_back((eleIt->superCluster()->energy()>0) ? lazyTools.e2x5Max(*seedCluster) / eleIt->superCluster()->energy() : -1);
         
         // remove 2x2 1x5
-        T_Elec_E3x3Seed->push_back((eleIt->superCluster()->energy()>0) ? mySCHelper.e3x3() / eleIt->superCluster()->energy() : -1);
-        T_Elec_E5x5Seed->push_back((eleIt->superCluster()->energy()>0) ? mySCHelper.e5x5() / eleIt->superCluster()->energy() : -1);
+        T_Elec_E3x3Seed->push_back((eleIt->superCluster()->energy()>0) ? lazyTools.e3x3(*seedCluster) / eleIt->superCluster()->energy() : -1);
+        T_Elec_E5x5Seed->push_back((eleIt->superCluster()->energy()>0) ? lazyTools.e5x5(*seedCluster) / eleIt->superCluster()->energy() : -1);
         
-        T_Elec_see->push_back(mySCHelper.sigmaIetaIeta());
-        T_Elec_sep->push_back(mySCHelper.sep());
-        T_Elec_spp->push_back(mySCHelper.spp());
+        std::vector<float> vCovN = lazyTools.localCovariances(*seedCluster);
+        T_Elec_see->push_back(sqrt(vCovN[0]));
+        T_Elec_sep->push_back(sqrt(vCovN[2]));
+        T_Elec_spp->push_back(sqrt(vCovN[1]));
         
-        T_Elec_etawidth->push_back(mySCHelper.etaWidth());
-        T_Elec_phiwidth->push_back(mySCHelper.phiWidth());
+        T_Elec_etawidth->push_back(eleIt->superCluster()->etaWidth());
+        T_Elec_phiwidth->push_back(eleIt->superCluster()->phiWidth());
         
-        T_Elec_s9e25->push_back((mySCHelper.e5x5()>0) ? mySCHelper.e3x3()/mySCHelper.e5x5() : -1);
+        T_Elec_s9e25->push_back((lazyTools.e5x5(*seedCluster)>0) ? lazyTools.e3x3(*seedCluster)/lazyTools.e5x5(*seedCluster) : -1);
         
-        T_Elec_e1x5e5x5->push_back((eleIt->e5x5()) !=0. ? 1.-(eleIt->e1x5()/eleIt->e5x5()) : -1.);
+        T_Elec_e1x5e5x5->push_back((lazyTools.e5x5(*seedCluster)) !=0. ? 1.-(eleIt->e1x5()/eleIt->e5x5()) : -1.);
         
         
+        T_Elec_R9->push_back((eleIt->superCluster()->energy()>0) ? lazyTools.e3x3(*seedCluster) / eleIt->superCluster()->energy() : -1);
+   
         bool vtxFitConversion = ConversionTools::hasMatchedConversion(*eleIt, conversions_h, beamSpot.position());
         T_Elec_MatchConv->push_back(vtxFitConversion);
         T_Elec_EcalDriven->push_back(eleIt->ecalDrivenSeed());
+        
+        std::vector<float> vCov = lazyToolsNoZS.localCovariances(*seedCluster);
+        
+        T_Elec_noZSsee->push_back(  sqrt(vCov[0]));
+        T_Elec_noZSspp->push_back(  sqrt(vCov[2]));
+        T_Elec_noZSsep->push_back(  sqrt(vCov[1]));
+        T_Elec_noZSr9->push_back((eleIt->superCluster()->energy()>0) ? lazyToolsNoZS.e3x3(*seedCluster)/eleIt->superCluster()->energy(): -1);
+        T_Elec_noZSe1x5->push_back(lazyToolsNoZS.e1x5(*seedCluster));
+        T_Elec_noZSe2x5MaxSeed->push_back(lazyToolsNoZS.e1x5(*seedCluster));
+        T_Elec_noZSe5x5->push_back(lazyToolsNoZS.e1x5(*seedCluster));
+      
         
         
         T_Elec_puChargedIso->push_back((*eleIt).pfIsolationVariables().sumChargedParticlePt);
@@ -455,6 +471,53 @@ ElecIdTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
         T_Elec_ECALiso->push_back(eleIt->dr03EcalRecHitSumEt());
         T_Elec_HCALiso->push_back(eleIt->dr03HcalTowerSumEt());
         T_Elec_TKiso->push_back(eleIt->dr03TkSumPt());
+        
+        
+     //   fill the infos on the 3 first BC
+        int nbBC = 1;
+        for (reco::CaloCluster_iterator subBC = eleIt->superCluster()->clustersBegin(); subBC != eleIt->superCluster()->clustersEnd(); ++subBC){
+            switch (nbBC) {
+                case 1:
+                    T_Elec_BC1_eta->push_back((*subBC)->eta());
+                    T_Elec_BC1_phi->push_back((*subBC)->phi());
+                    T_Elec_BC1_energy->push_back((*subBC)->energy());
+                    break;
+                    
+                case 2:
+                    T_Elec_BC2_eta->push_back((*subBC)->eta());
+                    T_Elec_BC2_phi->push_back((*subBC)->phi());
+                    T_Elec_BC2_energy->push_back((*subBC)->energy());
+                    break;
+                    
+                case 3:
+                    T_Elec_BC3_eta->push_back((*subBC)->eta());
+                    T_Elec_BC3_phi->push_back((*subBC)->phi());
+                    T_Elec_BC3_energy->push_back((*subBC)->energy());
+                    break;
+                    
+                default:
+                    break;
+            }
+            nbBC++;
+        }
+        
+        T_Elec_nbBC->push_back(nbBC);
+        
+        if (nbBC==1) {
+            T_Elec_BC2_eta->push_back(-1);
+            T_Elec_BC2_phi->push_back(-1);
+            T_Elec_BC2_energy->push_back(-1);
+            
+            T_Elec_BC3_eta->push_back(-1);
+            T_Elec_BC3_phi->push_back(-1);
+            T_Elec_BC3_energy->push_back(-1);
+        }
+        
+        if (nbBC==2) {
+            T_Elec_BC3_eta->push_back(-1);
+            T_Elec_BC3_phi->push_back(-1);
+            T_Elec_BC3_energy->push_back(-1);
+        }
         
         
     }
@@ -498,6 +561,13 @@ ElecIdTreeProducer::beginJob()
     mytree_->Branch("T_Event_RunNumber", &T_Event_RunNumber, "T_Event_RunNumber/I");
     mytree_->Branch("T_Event_EventNumber", &T_Event_EventNumber, "T_Event_EventNumber/I");
     mytree_->Branch("T_Event_LuminosityBlock", &T_Event_LuminosityBlock, "T_Event_LuminosityBlock/I");
+    
+    mytree_->Branch("T_Event_nPU", &T_Event_nPU, "T_Event_nPU/I");
+    mytree_->Branch("T_Event_nTruePU", &T_Event_nTruePU, "T_Event_nTruePU/F");
+    mytree_->Branch("T_Event_nPUm", &T_Event_nPUm, "T_Event_nPUm/I");
+    mytree_->Branch("T_Event_nPUp", &T_Event_nPUp, "T_Event_nPUp/I");
+    mytree_->Branch("T_Event_AveNTruePU", &T_Event_AveNTruePU, "T_Event_AveNTruePU/F");
+
     
     
     mytree_->Branch("T_Event_Rho", "std::vector<float>", &T_Event_Rho);
@@ -606,9 +676,36 @@ ElecIdTreeProducer::beginJob()
     mytree_->Branch("T_Elec_MatchConv", "std::vector<int>", &T_Elec_MatchConv);
     mytree_->Branch("T_Elec_EcalDriven", "std::vector<int>", &T_Elec_EcalDriven);
     
+    
+    mytree_->Branch("T_Elec_noZSsee", "std::vector<float>", &T_Elec_noZSsee);
+    mytree_->Branch("T_Elec_noZSspp", "std::vector<float>", &T_Elec_noZSspp);
+    mytree_->Branch("T_Elec_noZSsep", "std::vector<float>", &T_Elec_noZSsep);
+    mytree_->Branch("T_Elec_noZSr9", "std::vector<float>", &T_Elec_noZSr9);
+    mytree_->Branch("T_Elec_noZSe1x5", "std::vector<float>", &T_Elec_noZSe1x5);
+    mytree_->Branch("T_Elec_noZSe2x5MaxSeed", "std::vector<float>", &T_Elec_noZSe2x5MaxSeed);
+    mytree_->Branch("T_Elec_noZSe5x5", "std::vector<float>", &T_Elec_noZSe5x5);
+
+    
+    
     mytree_->Branch("T_Elec_ECALiso", "std::vector<float>", &T_Elec_ECALiso);
     mytree_->Branch("T_Elec_HCALiso", "std::vector<float>", &T_Elec_HCALiso);
     mytree_->Branch("T_Elec_TKiso", "std::vector<float>", &T_Elec_TKiso);
+    
+    
+    mytree_->Branch("T_Elec_nbBC", "std::vector<int>", &T_Elec_nbBC);
+    mytree_->Branch("T_Elec_BC1_eta", "std::vector<float>", &T_Elec_BC1_eta);
+    mytree_->Branch("T_Elec_BC1_phi", "std::vector<float>", &T_Elec_BC1_phi);
+    mytree_->Branch("T_Elec_BC1_energy", "std::vector<float>", &T_Elec_BC1_energy);
+
+    mytree_->Branch("T_Elec_BC2_eta", "std::vector<float>", &T_Elec_BC1_eta);
+    mytree_->Branch("T_Elec_BC2_phi", "std::vector<float>", &T_Elec_BC1_phi);
+    mytree_->Branch("T_Elec_BC2_energy", "std::vector<float>", &T_Elec_BC1_energy);
+    
+    mytree_->Branch("T_Elec_BC3_eta", "std::vector<float>", &T_Elec_BC3_eta);
+    mytree_->Branch("T_Elec_BC3_phi", "std::vector<float>", &T_Elec_BC3_phi);
+    mytree_->Branch("T_Elec_BC3_energy", "std::vector<float>", &T_Elec_BC3_energy);
+    
+    
     
     
     //jets
@@ -751,9 +848,33 @@ ElecIdTreeProducer::beginEvent()
     T_Elec_EcalDriven = new std::vector<int>;
     
     
+    T_Elec_noZSsee = new std::vector<float>;
+    T_Elec_noZSspp = new std::vector<float>;
+    T_Elec_noZSsep = new std::vector<float>;
+    T_Elec_noZSr9 = new std::vector<float>;
+    T_Elec_noZSe1x5 = new std::vector<float>;
+    T_Elec_noZSe2x5MaxSeed = new std::vector<float>;
+    T_Elec_noZSe5x5 = new std::vector<float>;
+
+    
+    
     T_Elec_ECALiso = new std::vector<float>;
     T_Elec_HCALiso = new std::vector<float>;
     T_Elec_TKiso = new std::vector<float>;
+    
+    T_Elec_nbBC = new std::vector<int>;
+    T_Elec_BC1_eta = new std::vector<float>;
+    T_Elec_BC1_phi = new std::vector<float>;
+    T_Elec_BC1_energy = new std::vector<float>;
+
+    T_Elec_BC2_eta = new std::vector<float>;
+    T_Elec_BC2_phi = new std::vector<float>;
+    T_Elec_BC2_energy = new std::vector<float>;
+    
+    T_Elec_BC3_eta = new std::vector<float>;
+    T_Elec_BC3_phi = new std::vector<float>;
+    T_Elec_BC3_energy = new std::vector<float>;
+    
     
     T_Jet_Px = new std::vector<float>;
     T_Jet_Py = new std::vector<float>;
@@ -872,9 +993,29 @@ ElecIdTreeProducer::endEvent()
     delete T_Elec_MatchConv;
     delete T_Elec_EcalDriven;
     
+    delete T_Elec_noZSsee;
+    delete T_Elec_noZSspp;
+    delete T_Elec_noZSsep;
+    delete T_Elec_noZSr9;
+    delete T_Elec_noZSe1x5;
+    delete T_Elec_noZSe2x5MaxSeed;
+    delete T_Elec_noZSe5x5;
+
+    
     delete T_Elec_ECALiso;
     delete T_Elec_HCALiso;
     delete T_Elec_TKiso;
+    
+    delete T_Elec_nbBC;
+    delete T_Elec_BC1_eta;
+    delete T_Elec_BC1_phi;
+    delete T_Elec_BC1_energy;
+    delete T_Elec_BC2_eta;
+    delete T_Elec_BC2_phi;
+    delete T_Elec_BC2_energy;
+    delete T_Elec_BC3_eta;
+    delete T_Elec_BC3_phi;
+    delete T_Elec_BC3_energy;
     
     delete T_Jet_Px;
     delete T_Jet_Py;

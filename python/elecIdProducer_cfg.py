@@ -12,19 +12,25 @@ process.load("Configuration/StandardSequences/FrontierConditions_GlobalTag_cff")
 process.load("Configuration.StandardSequences.Reconstruction_cff")
 process.load("Configuration.StandardSequences.Services_cff")
 
-process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(1000) )
+process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(20) )
+
+process.MessageLogger.cerr.FwkReport.reportEvery = 10
+
 
 process.source = cms.Source("PoolSource",
     # replace 'myfile.root' with the source file you want to use
     fileNames = cms.untracked.vstring(
                                       #'file:/tmp/hbrun/theLocalReco.root'
-                                      #'file:/tmp/hbrun/theDY_70_file.root'
-                                      'file:/tmp/hbrun/theDYfile_new.root'
+                                      'file:/tmp/hbrun/theDY_70_file.root'
+                                      #'file:/tmp/hbrun/theDYfile_new.root'
     )
 )
 
 
 process.GlobalTag.globaltag = 'FT_R_70_V1::All'
+if (isMC):
+    process.GlobalTag.globaltag = 'POSTLS170_V5::All'
+
 
 typeProcess = "reRECO"
 if (isMC):
@@ -100,4 +106,5 @@ if (isMC):
     process.ElecIdTreeProducer.isMC = cms.bool(True)
 
 
-process.p = cms.Path(process.triggerResultsFilter * process.primaryVertexFilter * process.noscraping * process.kt6PFJetsForIsolation*process.ElecIdTreeProducer)
+#process.p = cms.Path(process.triggerResultsFilter * process.primaryVertexFilter * process.noscraping * process.kt6PFJetsForIsolation*process.ElecIdTreeProducer)
+process.p = cms.Path(process.primaryVertexFilter * process.noscraping * process.kt6PFJetsForIsolation*process.ElecIdTreeProducer)
