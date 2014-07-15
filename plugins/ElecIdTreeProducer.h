@@ -121,6 +121,7 @@ private:
     virtual void endEvent();
     virtual bool hasWZasMother(const reco::GenParticle);
     virtual bool isMatchedWithGen(reco::GenParticle, const reco::GsfElectron &);
+    virtual bool hasTauasMother(const reco::GenParticle);
 
     
     //virtual void beginRun(edm::Run const&, edm::EventSetup const&) override;
@@ -195,9 +196,11 @@ private:
     std::vector<float> *T_Gen_Elec_Py;
     std::vector<float> *T_Gen_Elec_Pz;
     std::vector<float> *T_Gen_Elec_Energy;
+    std::vector<int> *T_Gen_Elec_status;
     std::vector<int> *T_Gen_Elec_PDGid;
     std::vector<int> *T_Gen_Elec_MotherID;
     std::vector<int> *T_Gen_Elec_GndMotherID;
+    std::vector<int> *T_Gen_Elec_fromTAU;
     
     //trigger leg
     std::vector<int> *T_Elec_TriggerLeg;

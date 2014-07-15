@@ -239,7 +239,7 @@ ElecIdTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
             for (int iteGen = 0 ; iteGen < theNbOfGenParticles ; iteGen++){
                 const reco::GenParticle & genElectron = (*genParticles)[iteGen];
                 if (fabs(genElectron.pdgId())!=11) continue;
-                if ((fabs(genElectron.pdgId())==11)&&(genElectron.status()==1)&&(hasWZasMother(genElectron))){
+                if ((fabs(genElectron.pdgId())==11)&&((genElectron.status()==1)||(genElectron.status()==22)||(genElectron.status()==23))&&(hasWZasMother(genElectron))){
                     bool matching = isMatchedWithGen(genElectron, *eleIt);
                     if (matching) {
                         theGenPartRef = iteGen;
@@ -254,6 +254,9 @@ ElecIdTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
                 T_Gen_Elec_Pz->push_back(genElectron.pz());
                 T_Gen_Elec_Energy->push_back(genElectron.energy());
                 T_Gen_Elec_PDGid->push_back(genElectron.pdgId());
+                T_Gen_Elec_status->push_back(genElectron.status());
+                int  isFromTau = hasTauasMother(genElectron);
+                T_Gen_Elec_fromTAU->push_back(isFromTau);
                 if (genElectron.numberOfMothers()>0) {
                     const reco::Candidate  *part = (genElectron.mother());
                     const reco::Candidate  *MomPart =(genElectron.mother()); //dummy initialisation :)
@@ -285,6 +288,8 @@ ElecIdTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
                 T_Gen_Elec_PDGid->push_back(-1);
                 T_Gen_Elec_MotherID->push_back(-1);
                 T_Gen_Elec_GndMotherID->push_back(-1);
+                T_Gen_Elec_status->push_back(-1);
+                T_Gen_Elec_fromTAU->push_back(-1);
             }
             
             
@@ -579,9 +584,11 @@ ElecIdTreeProducer::beginJob()
     mytree_->Branch("T_Gen_Elec_Py", "std::vector<float>", &T_Gen_Elec_Py);
     mytree_->Branch("T_Gen_Elec_Pz", "std::vector<float>", &T_Gen_Elec_Pz);
     mytree_->Branch("T_Gen_Elec_Energy", "std::vector<float>", &T_Gen_Elec_Energy);
+    mytree_->Branch("T_Gen_Elec_status", "std::vector<int>", &T_Gen_Elec_status);
     mytree_->Branch("T_Gen_Elec_PDGid", "std::vector<int>", &T_Gen_Elec_PDGid);
     mytree_->Branch("T_Gen_Elec_MotherID", "std::vector<int>", &T_Gen_Elec_MotherID);
     mytree_->Branch("T_Gen_Elec_GndMotherID", "std::vector<int>", &T_Gen_Elec_GndMotherID);
+    mytree_->Branch("T_Gen_Elec_fromTAU", "std::vector<int>", &T_Gen_Elec_fromTAU);
     
     
     mytree_->Branch("T_Elec_TriggerLeg", "std::vector<int>", &T_Elec_TriggerLeg);
@@ -766,6 +773,8 @@ ElecIdTreeProducer::beginEvent()
     T_Gen_Elec_PDGid = new std::vector<int>;
     T_Gen_Elec_MotherID = new std::vector<int>;
     T_Gen_Elec_GndMotherID = new std::vector<int>;
+    T_Gen_Elec_status = new std::vector<int>;
+    T_Gen_Elec_fromTAU = new std::vector<int>;
     
     T_Elec_TriggerLeg = new std::vector<int>;
     
@@ -912,6 +921,8 @@ ElecIdTreeProducer::endEvent()
     delete T_Gen_Elec_PDGid;
     delete T_Gen_Elec_MotherID;
     delete T_Gen_Elec_GndMotherID;
+    delete T_Gen_Elec_status;
+    delete T_Gen_Elec_fromTAU;
     
     delete T_Elec_TriggerLeg;
     
@@ -1087,7 +1098,23 @@ ElecIdTreeProducer::hasWZasMother(const reco::GenParticle  p)
     return foundW;
 }
 
-
+bool
+ElecIdTreeProducer::hasTauasMother(const reco::GenParticle  p)
+{
+    bool foundW = false;
+    if (p.numberOfMothers()==0) return foundW;
+    const reco::Candidate  *part = (p.mother());
+    // loop on the mother particles to check if is has a W has mother
+    while ((part->numberOfMothers()>0)) {
+        const reco::Candidate  *MomPart =part->mother();
+        if ((fabs(MomPart->pdgId())==15)){
+            foundW = true;
+            break;
+        }
+        part = MomPart;
+    }
+    return foundW;
+}
 
 
 bool
