@@ -236,19 +236,23 @@ ElecIdTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
         // if in MC then do the matching with MC particles
         if (isMC_){
             int theGenPartRef = -1;
+            float minDr = 1000;
+            int iteMinDr=-1;
             for (int iteGen = 0 ; iteGen < theNbOfGenParticles ; iteGen++){
                 const reco::GenParticle & genElectron = (*genParticles)[iteGen];
                 if (fabs(genElectron.pdgId())!=11) continue;
-                if ((fabs(genElectron.pdgId())==11)&&((genElectron.status()==1)||(genElectron.status()==22)||(genElectron.status()==23))&&(hasWZasMother(genElectron))){
-                    bool matching = isMatchedWithGen(genElectron, *eleIt);
-                    if (matching) {
-                        theGenPartRef = iteGen;
-                        break;
-                    }
+                float deltaR = sqrt(pow(eleIt->eta()-genElectron.eta(),2)+ pow(acos(cos(eleIt->phi()-genElectron.phi())),2)) ;
+                if (deltaR<minDr){
+                    minDr = deltaR;
+                    iteMinDr = iteGen;
                 }
             }
+            if (minDr<0.1) theGenPartRef = iteMinDr;
+            
+ 
             if (theGenPartRef>=0){
                 const reco::GenParticle & genElectron = (*genParticles)[theGenPartRef];
+                T_Gen_Elec_softElectron->push_back(isNonPromptElectron(genElectron));
                 T_Gen_Elec_Px->push_back(genElectron.px());
                 T_Gen_Elec_Py->push_back(genElectron.py());
                 T_Gen_Elec_Pz->push_back(genElectron.pz());
@@ -290,6 +294,7 @@ ElecIdTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
                 T_Gen_Elec_GndMotherID->push_back(-1);
                 T_Gen_Elec_status->push_back(-1);
                 T_Gen_Elec_fromTAU->push_back(-1);
+                T_Gen_Elec_softElectron->push_back(-1);
             }
             
             
@@ -461,8 +466,8 @@ ElecIdTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
         T_Elec_noZSsep->push_back(  sqrt(vCov[1]));
         T_Elec_noZSr9->push_back((eleIt->superCluster()->energy()>0) ? lazyToolsNoZS.e3x3(*seedCluster)/eleIt->superCluster()->energy(): -1);
         T_Elec_noZSe1x5->push_back(lazyToolsNoZS.e1x5(*seedCluster));
-        T_Elec_noZSe2x5MaxSeed->push_back(lazyToolsNoZS.e1x5(*seedCluster));
-        T_Elec_noZSe5x5->push_back(lazyToolsNoZS.e1x5(*seedCluster));
+        T_Elec_noZSe2x5MaxSeed->push_back(lazyToolsNoZS.e2x5Max(*seedCluster));
+        T_Elec_noZSe5x5->push_back(lazyToolsNoZS.e5x5(*seedCluster));
       
         
         
@@ -589,6 +594,7 @@ ElecIdTreeProducer::beginJob()
     mytree_->Branch("T_Gen_Elec_MotherID", "std::vector<int>", &T_Gen_Elec_MotherID);
     mytree_->Branch("T_Gen_Elec_GndMotherID", "std::vector<int>", &T_Gen_Elec_GndMotherID);
     mytree_->Branch("T_Gen_Elec_fromTAU", "std::vector<int>", &T_Gen_Elec_fromTAU);
+    mytree_->Branch("T_Gen_Elec_softElectron", "std::vector<int>", &T_Gen_Elec_softElectron);
     
     
     mytree_->Branch("T_Elec_TriggerLeg", "std::vector<int>", &T_Elec_TriggerLeg);
@@ -775,6 +781,7 @@ ElecIdTreeProducer::beginEvent()
     T_Gen_Elec_GndMotherID = new std::vector<int>;
     T_Gen_Elec_status = new std::vector<int>;
     T_Gen_Elec_fromTAU = new std::vector<int>;
+    T_Gen_Elec_softElectron = new std::vector<int>;
     
     T_Elec_TriggerLeg = new std::vector<int>;
     
@@ -923,6 +930,7 @@ ElecIdTreeProducer::endEvent()
     delete T_Gen_Elec_GndMotherID;
     delete T_Gen_Elec_status;
     delete T_Gen_Elec_fromTAU;
+    delete T_Gen_Elec_softElectron;
     
     delete T_Elec_TriggerLeg;
     
@@ -1113,6 +1121,21 @@ ElecIdTreeProducer::hasTauasMother(const reco::GenParticle  p)
         }
         part = MomPart;
     }
+    return foundW;
+}
+bool
+ElecIdTreeProducer::isNonPromptElectron(const reco::GenParticle  p)
+{
+    bool foundW = false;
+    if (p.numberOfMothers()==0) return foundW;
+    const reco::Candidate  *part = (p.mother());
+    // loop on the mother particles to check if is has a W has mother
+    while ((part->numberOfMothers()>0)&&(part->status()==1)) {
+        const reco::Candidate  *MomPart =part->mother();
+        part = MomPart;
+    }
+    std::cout << "status=" << part->status()  << " pdgID=" << part->pdgId() << std::endl;
+    if (( part->status()==2)&&(fabs(part->pdgId())>50)) foundW=1;
     return foundW;
 }
 
