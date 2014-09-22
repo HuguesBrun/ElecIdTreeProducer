@@ -21,7 +21,9 @@ process.source = cms.Source("PoolSource",
     # replace 'myfile.root' with the source file you want to use
     fileNames = cms.untracked.vstring(
                                       #'file:/tmp/hbrun/theLocalReco.root'
-                                      'file:/tmp/hbrun/theDY_70_file.root'
+                                      #'file:/tmp/hbrun/theDY_70_file.root'
+					'/store/relval/CMSSW_7_1_0/RelValZMM_13/GEN-SIM-RECO/POSTLS171_V15-v1/00000/6650F961-99FB-E311-BA90-0025905A48BC.root'                                      
+
                                       #'file:/tmp/hbrun/theDYfile_new.root'
     )
 )
@@ -39,6 +41,7 @@ if (isMC):
 process.ElecIdTreeProducer = cms.EDAnalyzer('ElecIdTreeProducer',
     isMC                        = cms.bool(False),
     electronsCollection       	= cms.InputTag("gedGsfElectrons","",typeProcess),
+    muonProducer 	         	= cms.VInputTag(cms.InputTag("muons")),
     primaryVertexInputTag   	= cms.InputTag("offlinePrimaryVertices","",typeProcess),
     rechitCollectionEB   	= cms.InputTag("reducedEcalRecHitsEB","",typeProcess),
     rechitCollectionEE   	= cms.InputTag("reducedEcalRecHitsEE","",typeProcess),
@@ -49,19 +52,21 @@ process.ElecIdTreeProducer = cms.EDAnalyzer('ElecIdTreeProducer',
     jetCollectionTag     = cms.InputTag("ak5PFJets", "", typeProcess),
     triggerResultTag     = cms.InputTag("TriggerResults", "", "HLT"),
     triggerSummaryTag    = cms.InputTag("hltTriggerSummaryAOD", "", "HLT"),
-    pathsToSave           =cms.vstring("HLT_Ele17_CaloIdT_CaloIsoVL_TrkIdVL_TrkIsoVL_Ele8_CaloIdT_CaloIsoVL_TrkIdVL_TrkIsoVL_v",
-                                       "HLT_Ele17_CaloIdT_CaloIsoVL_TrkIdVL_TrkIsoVL_v",
-                                       "HLT_Ele8_CaloIdT_CaloIsoVL_TrkIdVL_TrkIsoVL_v",
-                                       "HLT_Ele17_CaloIdVT_CaloIsoVT_TrkIdT_TrkIsoVT_Ele8_Mass50_v",
-                                       "HLT_Ele20_CaloIdVT_CaloIsoVT_TrkIdT_TrkIsoVT_SC4_Mass50_v"),
+    pathsToSave           =cms.vstring("HLT_Ele17_CaloIdT_CaloIsoVL_TrkIdVL_TrkIsoVL_Ele8_CaloIdT_CaloIsoVL_TrkIdVL_TrkIsoVL_v20",
+                                       "HLT_Mu17_Mu8_v23",
+                                       "HLT_Mu17_TkMu8_v15",
+                                       "HLT_Mu8_Ele17_CaloIdT_CaloIsoVL_TrkIdVL_TrkIsoVL_v10",
+                                       "HLT_Mu17_Ele8_CaloIdT_CaloIsoVL_TrkIdVL_TrkIsoVL_v10"),
     filterToMatch           =cms.vstring("hltEle17TightIdLooseIsoEle8TightIdLooseIsoTrackIsoFilter",
                                          "hltEle17TightIdLooseIsoEle8TightIdLooseIsoTrackIsoDoubleFilter",
-                                         "hltEle17CaloIdTCaloIsoVLTrkIdVLTrkIsoVLTrackIsoFilter",
-                                         "hltEle8TightIdLooseIsoTrackIsoFilter",
-                                         "hltEle17CaloIdVTCaloIsoVTTrkIdTTrkIsoVTEle8TrackIsoFilter",
-                                         "hltEle17CaloIdVTCaloIsoVTTrkIdTTrkIsoVTEle8PMMassFilter",
-                                         "hltEle20CaloIdVTCaloIsoVTTrkIdTTrkIsoVTSC4TrackIsoFilter",
-                                         "hltEle20CaloIdVTCaloIsoVTTrkIdTTrkIsoVTSC4PMMassFilter"),
+                                         "hltL3pfL1DoubleMu10MuOpenOR3p5L1f0L2pf0L3PreFiltered8",
+                                         "hltL3fL1DoubleMu10MuOpenOR3p5L1f0L2f10L3Filtered17",
+                                         "hltL3fL1sMu10MuOpenOR3p5L1f0L2f10L3Filtered17",
+                                         "hltDiMuonGlbFiltered17TrkFiltered8",
+                                         "hltL1sL1Mu3p5EG12ORL1MuOpenEG12L3Filtered8",
+                                         "hltMu8Ele17CaloIdTCaloIsoVLTrkIdVLTrkIsoVLTrackIsoFilter",
+                                         "hltL1Mu12EG7L3MuFiltered17",
+                                         "hltMu17Ele8CaloIdTCaloIsoVLTrkIdVLTrkIsoVLTrackIsoFilter"),
     HLTprocess            = cms.string("HLT"),
     outputFile		        = cms.string("ElecIDtree.root")
 )

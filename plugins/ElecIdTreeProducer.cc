@@ -12,12 +12,16 @@ ElecIdTreeProducer::ElecIdTreeProducer(const edm::ParameterSet& iConfig)
     
     EBRecHitsLabel_           = iConfig.getParameter<edm::InputTag>("rechitCollectionEB");
     EERecHitsLabel_           = iConfig.getParameter<edm::InputTag>("rechitCollectionEE");
+
+    ecalRechitEBToken_ = consumes<EcalRecHitCollection>(EBRecHitsLabel_);
+    ecalRechitEEToken_ = consumes<EcalRecHitCollection>(EERecHitsLabel_);
     
     conversionsInputTag_ = iConfig.getParameter<edm::InputTag>("conversionsCollection");
     beamSpotInputTag_ = iConfig.getParameter<edm::InputTag>("beamSpotInputTag");
     rhoInputTags_ = iConfig.getParameter<std::vector<edm::InputTag> >("rhoTags");
     metTag_ = iConfig.getParameter<edm::InputTag>("metTag");
     jetCollectionTag_= iConfig.getParameter<edm::InputTag>("jetCollectionTag");
+    muonProducers_			= iConfig.getParameter<vtag>("muonProducer");
     triggerResultsTag_ = iConfig.getParameter<edm::InputTag>("triggerResultTag");
     triggerSummaryLabel_= iConfig.getParameter<edm::InputTag>("triggerSummaryTag");
     pathsToSave_ = iConfig.getParameter<std::vector<std::string> >("pathsToSave");
@@ -99,6 +103,11 @@ ElecIdTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
     iEvent.getByLabel(metTag_,metPF);
     const reco::PFMET * metsPF= &((metPF.product())->front());
     
+    //muon collection :
+		edm::Handle < std::vector <reco::Muon> > recoMuons;
+    edm::InputTag muonProducer = muonProducers_.at(0);
+	iEvent.getByLabel(muonProducer, recoMuons);
+    
     
     //initialize the ECAL geom, if not yet done
     if (!(isGeomInitialized_)){
@@ -127,8 +136,8 @@ ElecIdTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
      }
     
 
-    noZS::EcalClusterLazyTools lazyToolsNoZS(iEvent, iSetup, EBRecHitsLabel_, EERecHitsLabel_);
-    EcalClusterLazyTools lazyTools(iEvent, iSetup, EBRecHitsLabel_, EERecHitsLabel_);
+    noZS::EcalClusterLazyTools lazyToolsNoZS(iEvent, iSetup, ecalRechitEBToken_, ecalRechitEBToken_);
+    EcalClusterLazyTools lazyTools(iEvent, iSetup, ecalRechitEBToken_, ecalRechitEEToken_);
 
     
     float truePu=0.;
@@ -167,6 +176,21 @@ ElecIdTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
         } catch (...) {}
         T_Event_AveNTruePU=truePu;
     }
+    
+    
+    reco::Vertex dummy;
+    const reco::Vertex *pv = &dummy;
+    if (vtx_h->size() != 0) {
+        pv = &*vtx_h->begin();
+    } else { // create a dummy PV
+        reco::Vertex::Error e;
+        e(0, 0) = 0.0015 * 0.0015;
+        e(1, 1) = 0.0015 * 0.0015;
+        e(2, 2) = 15. * 15.;
+        reco::Vertex::Point p(0, 0, 0);
+        dummy = reco::Vertex(p, e, 0, 0, 0);
+    }
+    
     
     // now look at the trigger info !
 
@@ -214,7 +238,7 @@ ElecIdTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
     std::vector<unsigned int> legRefs;
     // find the ref of the legs
     for (size_t iteFilter=0; iteFilter<filterToMatch_.size(); iteFilter++) {
-	edm::InputTag filterTag = edm::InputTag(filterToMatch_.at(iteFilter), "", "HLT");
+	edm::InputTag filterTag = edm::InputTag(filterToMatch_.at(iteFilter), "", HLTprocess_);
         size_t filterIndex = (*triggerSummary).filterIndex(filterTag);
         if (filterIndex < (*triggerSummary).sizeFilters()) { //check if the trigger object is present
             //save the trigger objects corresponding to muon leg
@@ -469,7 +493,7 @@ ElecIdTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
         T_Elec_noZSe2x5MaxSeed->push_back(lazyToolsNoZS.e2x5Max(*seedCluster));
         T_Elec_noZSe5x5->push_back(lazyToolsNoZS.e5x5(*seedCluster));
       
-        
+       
         
         T_Elec_puChargedIso->push_back((*eleIt).pfIsolationVariables().sumChargedParticlePt);
         T_Elec_allChargedHadronIso->push_back((*eleIt).pfIsolationVariables().sumPUPt);
@@ -553,6 +577,167 @@ ElecIdTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
     T_METPF_Sig = metsPF[0].significance();
    // T_METPFTypeI_ET =
  //   T_METPFTypeI_Phi =
+    
+    
+    int nbMuons = recoMuons->size();
+    //cout << "il y a " << nbMuons << " muons " << endl;
+    //loop on the muons in the event
+    for (int k = 0 ; k < nbMuons ; k++){
+        
+        const reco::Muon* muon = &((*recoMuons)[k]);
+        //  cout << "le muon : eta=" << muon->eta() << " phi=" << muon->phi() << endl;
+        
+        if (isMC_){
+            int theGenPartRef = -1;
+            float minDr = 1000;
+            int iteMinDr=-1;
+            for (int iteGen = 0 ; iteGen < theNbOfGenParticles ; iteGen++){
+                const reco::GenParticle & genMuon = (*genParticles)[iteGen];
+                if (fabs(genMuon.pdgId())!=13) continue;
+                float deltaR = sqrt(pow(muon->eta()-genMuon.eta(),2)+ pow(acos(cos(muon->phi()-genMuon.phi())),2)) ;
+                if (deltaR<minDr){
+                    minDr = deltaR;
+                    iteMinDr = iteGen;
+                }
+            }
+            if (minDr<0.1) theGenPartRef = iteMinDr;
+            
+            
+            if (theGenPartRef>=0){
+                const reco::GenParticle & genMuon = (*genParticles)[theGenPartRef];
+                T_Gen_Muon_softMuon->push_back(isNonPromptElectron(genMuon));
+                T_Gen_Muon_Px->push_back(genMuon.px());
+                T_Gen_Muon_Py->push_back(genMuon.py());
+                T_Gen_Muon_Pz->push_back(genMuon.pz());
+                T_Gen_Muon_Energy->push_back(genMuon.energy());
+                T_Gen_Muon_PDGid->push_back(genMuon.pdgId());
+                T_Gen_Muon_status->push_back(genMuon.status());
+                int  isFromTau = hasTauasMother(genMuon);
+                T_Gen_Muon_fromTAU->push_back(isFromTau);
+                if (genMuon.numberOfMothers()>0) {
+                    const reco::Candidate  *part = (genMuon.mother());
+                    const reco::Candidate  *MomPart =(genMuon.mother()); //dummy initialisation :)
+                    // loop on the  particles to check if is has a W has mother
+                    while ((part->numberOfMothers()>0)) {
+                        MomPart =part->mother();
+                        if ((fabs(MomPart->pdgId())>=22)&&(fabs(MomPart->pdgId())<=24)){
+                            break;
+                        }
+                        part = MomPart;
+                    }
+                    T_Gen_Muon_MotherID->push_back(MomPart->pdgId());
+                    if (MomPart->numberOfMothers()>0) {
+                        const reco::Candidate  *grandMa = MomPart->mother();
+                        T_Gen_Muon_GndMotherID->push_back(grandMa->pdgId());
+                    }
+                    else T_Gen_Muon_GndMotherID->push_back(-1);
+                }
+                else {
+                    T_Gen_Muon_MotherID->push_back(-1);
+                    T_Gen_Muon_GndMotherID->push_back(-1);
+                }
+            }
+            else{
+                T_Gen_Muon_Px->push_back(-1);
+                T_Gen_Muon_Py->push_back(-1);
+                T_Gen_Muon_Pz->push_back(-1);
+                T_Gen_Muon_Energy->push_back(-1);
+                T_Gen_Muon_PDGid->push_back(-1);
+                T_Gen_Muon_MotherID->push_back(-1);
+                T_Gen_Muon_GndMotherID->push_back(-1);
+                T_Gen_Muon_status->push_back(-1);
+                T_Gen_Muon_fromTAU->push_back(-1);
+                T_Gen_Muon_softMuon->push_back(-1);
+            }
+            
+            
+        }
+        //now look if the electron is matched with trigger
+        //FIXME remove the double couting
+        int theLegInfo = 0;
+        for (unsigned int iteTrigObj = 0 ; iteTrigObj < filterToMatch_.size() ; iteTrigObj++){
+            bool foundTheLeg = false;
+            for (unsigned int i = 0 ; i < legObjects.size() ; i++){
+                if (legRefs.at(i)==iteTrigObj) continue;
+                float deltaR = sqrt(pow(legObjects[i].eta()-muon->eta(),2)+ pow(acos(cos(legObjects[i].phi()-muon->phi())),2)) ;
+                if (deltaR<0.1) {
+                    foundTheLeg = true;
+                }
+            }
+            if (foundTheLeg){
+                theLegInfo += std::pow(2,iteTrigObj);
+            }
+        }
+        T_Muon_TriggerLeg->push_back(theLegInfo);
+        
+        
+        T_Muon_Eta->push_back(muon->eta());
+        T_Muon_Phi->push_back(muon->phi());
+        T_Muon_IsGlobalMuon->push_back(muon->isGlobalMuon());
+        T_Muon_IsPFMuon->push_back(muon->isPFMuon());
+        T_Muon_IsTrackerMuon->push_back(muon->isTrackerMuon());
+        T_Muon_IsCaloMuon->push_back(muon->isCaloMuon());
+        T_Muon_IsStandAloneMuon->push_back(muon->isStandAloneMuon());
+        T_Muon_IsMuon->push_back(muon->isMuon());
+        T_Muon_Energy->push_back(muon->energy());
+        T_Muon_Et->push_back(muon->et());
+        T_Muon_Pt->push_back(muon->pt());
+        T_Muon_Px->push_back(muon->px());
+        T_Muon_Py->push_back(muon->py());
+        T_Muon_Pz->push_back(muon->pz());
+        T_Muon_Mass->push_back(muon->mass());
+        T_Muon_charge->push_back(muon->charge());
+        
+        T_Muon_numberOfChambers->push_back(muon->numberOfChambers());
+        T_Muon_numberOfChambersRPC->push_back(muon->numberOfChambersNoRPC());
+        T_Muon_numberOfMatches->push_back(muon->numberOfMatches());
+        T_Muon_numberOfMatchedStations->push_back(muon->numberOfMatchedStations());
+        bool isMatchTheStation = muon::isGoodMuon(*muon, muon::TMOneStationTight);
+        bool isGlobalMuonPT = muon::isGoodMuon(*muon, muon::GlobalMuonPromptTight);
+        bool isGlobalMuonArbitrated = muon::isGoodMuon(*muon, muon::TrackerMuonArbitrated);
+        T_Muon_TMLastStationTight->push_back(isMatchTheStation);
+        T_Muon_IsGlobalMuon_PromptTight->push_back(isGlobalMuonPT);
+        T_Muon_IsTrackerMuonArbitrated->push_back(isGlobalMuonArbitrated);
+        
+        if (muon->globalTrack().isNull()) T_Muon_globalTrackChi2->push_back(-1); else T_Muon_globalTrackChi2->push_back(muon->globalTrack()->normalizedChi2());
+        if (muon->globalTrack().isNull()) T_Muon_validMuonHits->push_back(-1); else T_Muon_validMuonHits->push_back(muon->globalTrack()->hitPattern().numberOfValidMuonHits());
+        T_Muon_trkKink->push_back(muon->combinedQuality().trkKink);
+        if (muon->muonBestTrack().isNull()) {
+            T_Muon_trkNbOfTrackerLayers->push_back(-1);
+            T_Muon_trkError->push_back(-1);
+            T_Muon_dB->push_back(-1);
+            T_Muon_dBstop->push_back(-1);
+            T_Muon_dzPV->push_back(-1);
+            T_Muon_dzstop->push_back(-1);
+            T_Muon_trkValidPixelHits->push_back(-1);
+            T_Muon_trkNbOfValidTrackeHits->push_back(-1);
+        }
+        else {
+            T_Muon_trkNbOfTrackerLayers->push_back(muon->muonBestTrack()->hitPattern().trackerLayersWithMeasurement());
+            T_Muon_trkError->push_back(muon->muonBestTrack()->ptError());
+            T_Muon_trkValidPixelHits->push_back(muon->muonBestTrack()->hitPattern().numberOfValidPixelHits());
+            T_Muon_dB->push_back(fabs(muon->muonBestTrack()->dxy(pv->position())));
+            T_Muon_dBstop->push_back(fabs(muon->muonBestTrack()->dxy(pv->position())));
+            T_Muon_dzPV->push_back(fabs(muon->muonBestTrack()->dz(pv->position())));
+            T_Muon_dzstop->push_back(fabs(muon->muonBestTrack()->dz(pv->position())));
+            T_Muon_trkNbOfValidTrackeHits->push_back(muon->muonBestTrack()->hitPattern().numberOfValidTrackerHits());
+        }
+        T_Muon_isoR03_emEt->push_back(muon->isolationR03().emEt);
+        T_Muon_isoR03_hadEt->push_back(muon->isolationR03().hadEt);
+        T_Muon_isoR03_hoEt->push_back(muon->isolationR03().hoEt);
+        T_Muon_isoR03_sumPt->push_back(muon->isolationR03().sumPt);
+        T_Muon_isoR03_nTracks->push_back(muon->isolationR03().nTracks);
+        T_Muon_isoR03_nJets->push_back(muon->isolationR03().nJets);
+        T_Muon_chargedHadronIsoR04->push_back(muon->pfIsolationR04().sumChargedHadronPt);
+        T_Muon_neutralHadronIsoR04->push_back(muon->pfIsolationR04().sumNeutralHadronEt);
+        T_Muon_photonIsoR04->push_back(muon->pfIsolationR04().sumPhotonEt);
+        T_Muon_chargedHadronIsoPUR04->push_back(muon->pfIsolationR04().sumPUPt);
+        T_Muon_chargedHadronIsoR03->push_back(muon->pfIsolationR03().sumChargedHadronPt);
+        T_Muon_neutralHadronIsoR03->push_back(muon->pfIsolationR03().sumNeutralHadronEt);
+        T_Muon_photonIsoR03->push_back(muon->pfIsolationR03().sumPhotonEt);
+        T_Muon_chargedHadronIsoPUR03->push_back(muon->pfIsolationR03().sumPUPt);
+
+    }
     
     mytree_->Fill();
     
@@ -718,8 +903,71 @@ ElecIdTreeProducer::beginJob()
     mytree_->Branch("T_Elec_BC3_phi", "std::vector<float>", &T_Elec_BC3_phi);
     mytree_->Branch("T_Elec_BC3_energy", "std::vector<float>", &T_Elec_BC3_energy);
     
+    //muons
+    
+    mytree_->Branch("T_Muon_TriggerLeg", "std::vector<int>", &T_Muon_TriggerLeg);
+
+    mytree_->Branch("T_Muon_Eta", "std::vector<float>", &T_Muon_Eta);
+    mytree_->Branch("T_Muon_Phi", "std::vector<float>", &T_Muon_Phi);
+    mytree_->Branch("T_Muon_Energy", "std::vector<float>", &T_Muon_Energy);
+    mytree_->Branch("T_Muon_Et", "std::vector<float>", &T_Muon_Et);
+    mytree_->Branch("T_Muon_Pt", "std::vector<float>", &T_Muon_Pt);
+    mytree_->Branch("T_Muon_Px", "std::vector<float>", &T_Muon_Px);
+    mytree_->Branch("T_Muon_Py", "std::vector<float>", &T_Muon_Py);
+    mytree_->Branch("T_Muon_Pz", "std::vector<float>", &T_Muon_Pz);
+    mytree_->Branch("T_Muon_Mass", "std::vector<float>", &T_Muon_Mass);
+    mytree_->Branch("T_Muon_IsGlobalMuon", "std::vector<bool>", &T_Muon_IsGlobalMuon);
+    mytree_->Branch("T_Muon_IsTrackerMuon", "std::vector<bool>", &T_Muon_IsTrackerMuon);
+    mytree_->Branch("T_Muon_IsPFMuon", "std::vector<bool>", &T_Muon_IsPFMuon);
+    mytree_->Branch("T_Muon_IsCaloMuon", "std::vector<bool>", &T_Muon_IsCaloMuon);
+    mytree_->Branch("T_Muon_IsStandAloneMuon", "std::vector<bool>", &T_Muon_IsStandAloneMuon);
+    mytree_->Branch("T_Muon_IsMuon", "std::vector<bool>", &T_Muon_IsMuon);
+    mytree_->Branch("T_Muon_IsGlobalMuon_PromptTight", "std::vector<bool>", &T_Muon_IsGlobalMuon_PromptTight);
+    mytree_->Branch("T_Muon_IsTrackerMuonArbitrated", "std::vector<bool>", &T_Muon_IsTrackerMuonArbitrated);
+    mytree_->Branch("T_Muon_numberOfChambers", "std::vector<int>", &T_Muon_numberOfChambers);
+    mytree_->Branch("T_Muon_numberOfChambersRPC", "std::vector<int>", &T_Muon_numberOfChambersRPC);
+    mytree_->Branch("T_Muon_numberOfMatches", "std::vector<int>", &T_Muon_numberOfMatches);
+    mytree_->Branch("T_Muon_numberOfMatchedStations", "std::vector<int>", &T_Muon_numberOfMatchedStations);
+    mytree_->Branch("T_Muon_charge", "std::vector<int>", &T_Muon_charge);
+    mytree_->Branch("T_Muon_TMLastStationTight", "std::vector<bool>", &T_Muon_TMLastStationTight);
+    mytree_->Branch("T_Muon_globalTrackChi2", "std::vector<float>", &T_Muon_globalTrackChi2);
+    mytree_->Branch("T_Muon_validMuonHits", "std::vector<int>", &T_Muon_validMuonHits);
+    mytree_->Branch("T_Muon_trkKink", "std::vector<float>", &T_Muon_trkKink);
+    mytree_->Branch("T_Muon_trkNbOfTrackerLayers", "std::vector<int>", &T_Muon_trkNbOfTrackerLayers);
+    mytree_->Branch("T_Muon_trkNbOfValidTrackeHits", "std::vector<int>", &T_Muon_trkNbOfValidTrackeHits);
+    mytree_->Branch("T_Muon_trkValidPixelHits", "std::vector<int>", &T_Muon_trkValidPixelHits);
+    mytree_->Branch("T_Muon_trkError", "std::vector<float>", &T_Muon_trkError);
+    mytree_->Branch("T_Muon_dB", "std::vector<float>", &T_Muon_dB);
+    mytree_->Branch("T_Muon_dzPV", "std::vector<float>", &T_Muon_dzPV);
+    mytree_->Branch("T_Muon_dBstop", "std::vector<float>", &T_Muon_dBstop);
+    mytree_->Branch("T_Muon_dzstop", "std::vector<float>", &T_Muon_dzstop);
+    mytree_->Branch("T_Muon_chargedHadronIsoR04", "std::vector<float>", &T_Muon_chargedHadronIsoR04);
+    mytree_->Branch("T_Muon_neutralHadronIsoR04", "std::vector<float>", &T_Muon_neutralHadronIsoR04);
+    mytree_->Branch("T_Muon_photonIsoR04", "std::vector<float>", &T_Muon_photonIsoR04);
+    mytree_->Branch("T_Muon_chargedHadronIsoPUR04", "std::vector<float>", &T_Muon_chargedHadronIsoPUR04);
+    mytree_->Branch("T_Muon_chargedHadronIsoR03", "std::vector<float>", &T_Muon_chargedHadronIsoR03);
+    mytree_->Branch("T_Muon_neutralHadronIsoR03", "std::vector<float>", &T_Muon_neutralHadronIsoR03);
+    mytree_->Branch("T_Muon_photonIsoR03", "std::vector<float>", &T_Muon_photonIsoR03);
+    mytree_->Branch("T_Muon_chargedHadronIsoPUR03", "std::vector<float>", &T_Muon_chargedHadronIsoPUR03);
+    mytree_->Branch("T_Muon_isoR03_emEt", "std::vector<float>", &T_Muon_isoR03_emEt);
+    mytree_->Branch("T_Muon_isoR03_hadEt", "std::vector<float>", &T_Muon_isoR03_hadEt);
+    mytree_->Branch("T_Muon_isoR03_hoEt", "std::vector<float>", &T_Muon_isoR03_hoEt);
+    mytree_->Branch("T_Muon_isoR03_sumPt", "std::vector<float>", &T_Muon_isoR03_sumPt);
+    mytree_->Branch("T_Muon_isoR03_nTracks", "std::vector<int>", &T_Muon_isoR03_nTracks);
+    mytree_->Branch("T_Muon_isoR03_nJets", "std::vector<int>", &T_Muon_isoR03_nJets);
+    mytree_->Branch("T_Muon_isoRingsMVA", "std::vector<float>", &T_Muon_isoRingsMVA);
     
     
+    mytree_->Branch("T_Gen_Muon_Px", "std::vector<float>", &T_Gen_Muon_Px);
+    mytree_->Branch("T_Gen_Muon_Py", "std::vector<float>", &T_Gen_Muon_Py);
+    mytree_->Branch("T_Gen_Muon_Pz", "std::vector<float>", &T_Gen_Muon_Pz);
+    mytree_->Branch("T_Gen_Muon_Energy", "std::vector<float>", &T_Gen_Muon_Energy);
+    mytree_->Branch("T_Gen_Muon_status", "std::vector<int>", &T_Gen_Muon_status);
+    mytree_->Branch("T_Gen_Muon_PDGid", "std::vector<int>", &T_Gen_Muon_PDGid);
+    mytree_->Branch("T_Gen_Muon_MotherID", "std::vector<int>", &T_Gen_Muon_MotherID);
+    mytree_->Branch("T_Gen_Muon_GndMotherID", "std::vector<int>", &T_Gen_Muon_GndMotherID);
+    mytree_->Branch("T_Gen_Muon_fromTAU", "std::vector<int>", &T_Gen_Muon_fromTAU);
+    mytree_->Branch("T_Gen_Muon_softMuon", "std::vector<int>", &T_Gen_Muon_softMuon);
     
     //jets
     mytree_->Branch("T_Jet_Px", "std::vector<float>", &T_Jet_Px);
@@ -892,6 +1140,70 @@ ElecIdTreeProducer::beginEvent()
     T_Elec_BC3_energy = new std::vector<float>;
     
     
+    T_Muon_TriggerLeg = new std::vector<int>;
+    
+    T_Muon_Eta = new std::vector<float>;
+    T_Muon_Phi = new std::vector<float>;
+    T_Muon_Energy = new std::vector<float>;
+    T_Muon_Et = new std::vector<float>;
+    T_Muon_Pt = new std::vector<float>;
+    T_Muon_Px = new std::vector<float>;
+    T_Muon_Py = new std::vector<float>;
+    T_Muon_Pz = new std::vector<float>;
+    T_Muon_Mass = new std::vector<float>;
+    T_Muon_IsGlobalMuon = new std::vector<bool>;
+    T_Muon_IsTrackerMuon = new std::vector<bool>;
+    T_Muon_IsPFMuon = new std::vector<bool>;
+    T_Muon_IsCaloMuon = new std::vector<bool>;
+    T_Muon_IsStandAloneMuon = new std::vector<bool>;
+    T_Muon_IsMuon = new std::vector<bool>;
+    T_Muon_IsGlobalMuon_PromptTight = new std::vector<bool>;
+    T_Muon_IsTrackerMuonArbitrated = new std::vector<bool>;
+    T_Muon_numberOfChambers = new std::vector<int>;
+    T_Muon_numberOfChambersRPC = new std::vector<int>;
+    T_Muon_numberOfMatches = new std::vector<int>;
+    T_Muon_numberOfMatchedStations = new std::vector<int>;
+    T_Muon_charge = new std::vector<int>;
+    T_Muon_TMLastStationTight = new std::vector<bool>;
+    T_Muon_globalTrackChi2 = new std::vector<float>;
+    T_Muon_validMuonHits = new std::vector<int>;
+    T_Muon_trkKink = new std::vector<float>;
+    T_Muon_trkNbOfTrackerLayers = new std::vector<int>;
+    T_Muon_trkNbOfValidTrackeHits = new std::vector<int>;
+    T_Muon_trkValidPixelHits = new std::vector<int>;
+    T_Muon_trkError = new std::vector<float>;
+    T_Muon_dB = new std::vector<float>;
+    T_Muon_dzPV = new std::vector<float>;
+    T_Muon_dBstop = new std::vector<float>;
+    T_Muon_dzstop = new std::vector<float>;
+    T_Muon_chargedHadronIsoR04 = new std::vector<float>;
+    T_Muon_neutralHadronIsoR04 = new std::vector<float>;
+    T_Muon_photonIsoR04 = new std::vector<float>;
+    T_Muon_chargedHadronIsoPUR04 = new std::vector<float>;
+    T_Muon_chargedHadronIsoR03 = new std::vector<float>;
+    T_Muon_neutralHadronIsoR03 = new std::vector<float>;
+    T_Muon_photonIsoR03 = new std::vector<float>;
+    T_Muon_chargedHadronIsoPUR03 = new std::vector<float>;
+    T_Muon_isoR03_emEt = new std::vector<float>;
+    T_Muon_isoR03_hadEt = new std::vector<float>;
+    T_Muon_isoR03_hoEt = new std::vector<float>;
+    T_Muon_isoR03_sumPt = new std::vector<float>;
+    T_Muon_isoR03_nTracks = new std::vector<int>;
+    T_Muon_isoR03_nJets = new std::vector<int>;
+    T_Muon_isoRingsMVA = new std::vector<float>;
+    
+    T_Gen_Muon_Px = new std::vector<float>;
+    T_Gen_Muon_Py = new std::vector<float>;
+    T_Gen_Muon_Pz = new std::vector<float>;
+    T_Gen_Muon_Energy = new std::vector<float>;
+    T_Gen_Muon_status = new std::vector<int>;
+    T_Gen_Muon_PDGid = new std::vector<int>;
+    T_Gen_Muon_MotherID = new std::vector<int>;
+    T_Gen_Muon_GndMotherID = new std::vector<int>;
+    T_Gen_Muon_fromTAU = new std::vector<int>;
+    T_Gen_Muon_softMuon = new std::vector<int>;
+    
+    
     T_Jet_Px = new std::vector<float>;
     T_Jet_Py = new std::vector<float>;
     T_Jet_Pz = new std::vector<float>;
@@ -1036,6 +1348,69 @@ ElecIdTreeProducer::endEvent()
     delete T_Elec_BC3_phi;
     delete T_Elec_BC3_energy;
     
+    delete T_Muon_TriggerLeg;
+    
+    delete T_Muon_Eta;
+    delete T_Muon_Phi;
+    delete T_Muon_Energy;
+    delete T_Muon_Et;
+    delete T_Muon_Pt;
+    delete T_Muon_Px;
+    delete T_Muon_Py;
+    delete T_Muon_Pz;
+    delete T_Muon_Mass;
+    delete T_Muon_IsGlobalMuon;
+    delete T_Muon_IsTrackerMuon;
+    delete T_Muon_IsPFMuon;
+    delete T_Muon_IsCaloMuon;
+    delete T_Muon_IsStandAloneMuon;
+    delete T_Muon_IsMuon;
+    delete T_Muon_IsGlobalMuon_PromptTight;
+    delete T_Muon_IsTrackerMuonArbitrated;
+    delete T_Muon_numberOfChambers;
+    delete T_Muon_numberOfChambersRPC;
+    delete T_Muon_numberOfMatches;
+    delete T_Muon_numberOfMatchedStations;
+    delete T_Muon_charge;
+    delete T_Muon_TMLastStationTight;
+    delete T_Muon_globalTrackChi2;
+    delete T_Muon_validMuonHits;
+    delete T_Muon_trkKink;
+    delete T_Muon_trkNbOfTrackerLayers;
+    delete T_Muon_trkNbOfValidTrackeHits;
+    delete T_Muon_trkValidPixelHits;
+    delete T_Muon_trkError;
+    delete T_Muon_dB;
+    delete T_Muon_dzPV;
+    delete T_Muon_dBstop;
+    delete T_Muon_dzstop;
+    delete T_Muon_chargedHadronIsoR04;
+    delete T_Muon_neutralHadronIsoR04;
+    delete T_Muon_photonIsoR04;
+    delete T_Muon_chargedHadronIsoPUR04;
+    delete T_Muon_chargedHadronIsoR03;
+    delete T_Muon_neutralHadronIsoR03;
+    delete T_Muon_photonIsoR03;
+    delete T_Muon_chargedHadronIsoPUR03;
+    delete T_Muon_isoR03_emEt;
+    delete T_Muon_isoR03_hadEt;
+    delete T_Muon_isoR03_hoEt;
+    delete T_Muon_isoR03_sumPt;
+    delete T_Muon_isoR03_nTracks;
+    delete T_Muon_isoR03_nJets;
+    delete T_Muon_isoRingsMVA;
+    
+    delete T_Gen_Muon_Px;
+    delete T_Gen_Muon_Py;
+    delete T_Gen_Muon_Pz;
+    delete T_Gen_Muon_Energy;
+    delete T_Gen_Muon_status;
+    delete T_Gen_Muon_PDGid;
+    delete T_Gen_Muon_MotherID;
+    delete T_Gen_Muon_GndMotherID;
+    delete T_Gen_Muon_fromTAU;
+    delete T_Gen_Muon_softMuon;
+    
     delete T_Jet_Px;
     delete T_Jet_Py;
     delete T_Jet_Pz;
@@ -1134,7 +1509,7 @@ ElecIdTreeProducer::isNonPromptElectron(const reco::GenParticle  p)
         const reco::Candidate  *MomPart =part->mother();
         part = MomPart;
     }
-    std::cout << "status=" << part->status()  << " pdgID=" << part->pdgId() << std::endl;
+   // std::cout << "status=" << part->status()  << " pdgID=" << part->pdgId() << std::endl;
     if (( part->status()==2)&&(fabs(part->pdgId())>50)) foundW=1;
     return foundW;
 }
