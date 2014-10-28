@@ -355,8 +355,8 @@ ElecIdTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
         T_Elec_vy->push_back(eleIt->vy());
         T_Elec_vz->push_back(eleIt->vz());
         
-        T_Elec_nLost->push_back(eleIt->gsfTrack()->trackerExpectedHitsInner().numberOfLostHits());
-        T_Elec_nHits->push_back(eleIt->gsfTrack()->trackerExpectedHitsInner().numberOfHits());
+        T_Elec_nLost->push_back(eleIt->gsfTrack()->hitPattern().numberOfHits(reco::HitPattern::MISSING_INNER_HITS));
+        //T_Elec_nHits->push_back(eleIt->gsfTrack()d$d$->trackerExpectedHitsInner().numberOfHits()); // the same as the previous one
         T_Elec_gsfhits->push_back(eleIt->gsfTrack()->numberOfValidHits());
         T_Elec_gsfchi2->push_back(eleIt->gsfTrack()->normalizedChi2());
         

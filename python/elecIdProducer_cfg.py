@@ -12,7 +12,7 @@ process.load("Configuration/StandardSequences/FrontierConditions_GlobalTag_cff")
 process.load("Configuration.StandardSequences.Reconstruction_cff")
 process.load("Configuration.StandardSequences.Services_cff")
 
-process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(20) )
+process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(-1) )
 
 process.MessageLogger.cerr.FwkReport.reportEvery = 10
 
@@ -22,8 +22,8 @@ process.source = cms.Source("PoolSource",
     fileNames = cms.untracked.vstring(
                                       #'file:/tmp/hbrun/theLocalReco.root'
                                       #'file:/tmp/hbrun/theDY_70_file.root'
-					'/store/relval/CMSSW_7_1_0/RelValZMM_13/GEN-SIM-RECO/POSTLS171_V15-v1/00000/6650F961-99FB-E311-BA90-0025905A48BC.root'                                      
-
+			#		'file:/tmp/hbrun/theDYfileInAOD.root'
+					'file:/tmp/hbrun/runRECO/step3_new.root'
                                       #'file:/tmp/hbrun/theDYfile_new.root'
     )
 )
@@ -112,4 +112,5 @@ if (isMC):
 
 
 #process.p = cms.Path(process.triggerResultsFilter * process.primaryVertexFilter * process.noscraping * process.kt6PFJetsForIsolation*process.ElecIdTreeProducer)
-process.p = cms.Path(process.primaryVertexFilter * process.noscraping * process.kt6PFJetsForIsolation*process.ElecIdTreeProducer)
+#process.p = cms.Path(process.primaryVertexFilter * process.noscraping * process.kt6PFJetsForIsolation*process.ElecIdTreeProducer)
+process.p = cms.Path(process.kt6PFJetsForIsolation*process.ElecIdTreeProducer)

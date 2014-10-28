@@ -58,6 +58,7 @@
 #include "EgammaAnalysis/ElectronTools/interface/SuperClusterHelper.h"
 #include "RecoEcal/EgammaCoreTools/interface/EcalClusterLazyTools.h"
 
+#include "DataFormats/TrackReco/interface/HitPattern.h"
 
 #include "DataFormats/BeamSpot/interface/BeamSpot.h"
 #include "RecoEgamma/EgammaTools/interface/ConversionTools.h"
