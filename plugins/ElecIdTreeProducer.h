@@ -147,6 +147,7 @@ private:
     HLTConfigProvider hltConfig; 
     
     bool isMC_;
+    bool doMuon_;
     edm::InputTag electronsCollection_;
     edm::InputTag primaryVertexInputTag_;
     vtag muonProducers_;

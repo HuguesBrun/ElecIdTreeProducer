@@ -6,6 +6,7 @@ ElecIdTreeProducer::ElecIdTreeProducer(const edm::ParameterSet& iConfig)
 {
     //now do what ever initialization is needed
     isMC_                   = iConfig.getParameter<bool>("isMC");
+    doMuon_                   = iConfig.getParameter<bool>("doMuon");
     
     electronsCollection_      = iConfig.getParameter<edm::InputTag>("electronsCollection");
     primaryVertexInputTag_    = iConfig.getParameter<edm::InputTag>("primaryVertexInputTag");
@@ -579,164 +580,166 @@ ElecIdTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
  //   T_METPFTypeI_Phi =
     
     
-    int nbMuons = recoMuons->size();
-    //cout << "il y a " << nbMuons << " muons " << endl;
-    //loop on the muons in the event
-    for (int k = 0 ; k < nbMuons ; k++){
-        
-        const reco::Muon* muon = &((*recoMuons)[k]);
-        //  cout << "le muon : eta=" << muon->eta() << " phi=" << muon->phi() << endl;
-        
-        if (isMC_){
-            int theGenPartRef = -1;
-            float minDr = 1000;
-            int iteMinDr=-1;
-            for (int iteGen = 0 ; iteGen < theNbOfGenParticles ; iteGen++){
-                const reco::GenParticle & genMuon = (*genParticles)[iteGen];
-                if (fabs(genMuon.pdgId())!=13) continue;
-                float deltaR = sqrt(pow(muon->eta()-genMuon.eta(),2)+ pow(acos(cos(muon->phi()-genMuon.phi())),2)) ;
-                if (deltaR<minDr){
-                    minDr = deltaR;
-                    iteMinDr = iteGen;
+    if (doMuon_){
+        int nbMuons = recoMuons->size();
+        //cout << "il y a " << nbMuons << " muons " << endl;
+        //loop on the muons in the event
+        for (int k = 0 ; k < nbMuons ; k++){
+            
+            const reco::Muon* muon = &((*recoMuons)[k]);
+            //  cout << "le muon : eta=" << muon->eta() << " phi=" << muon->phi() << endl;
+            
+            if (isMC_){
+                int theGenPartRef = -1;
+                float minDr = 1000;
+                int iteMinDr=-1;
+                for (int iteGen = 0 ; iteGen < theNbOfGenParticles ; iteGen++){
+                    const reco::GenParticle & genMuon = (*genParticles)[iteGen];
+                    if (fabs(genMuon.pdgId())!=13) continue;
+                    float deltaR = sqrt(pow(muon->eta()-genMuon.eta(),2)+ pow(acos(cos(muon->phi()-genMuon.phi())),2)) ;
+                    if (deltaR<minDr){
+                        minDr = deltaR;
+                        iteMinDr = iteGen;
+                    }
                 }
-            }
-            if (minDr<0.1) theGenPartRef = iteMinDr;
-            
-            
-            if (theGenPartRef>=0){
-                const reco::GenParticle & genMuon = (*genParticles)[theGenPartRef];
-                T_Gen_Muon_softMuon->push_back(isNonPromptElectron(genMuon));
-                T_Gen_Muon_Px->push_back(genMuon.px());
-                T_Gen_Muon_Py->push_back(genMuon.py());
-                T_Gen_Muon_Pz->push_back(genMuon.pz());
-                T_Gen_Muon_Energy->push_back(genMuon.energy());
-                T_Gen_Muon_PDGid->push_back(genMuon.pdgId());
-                T_Gen_Muon_status->push_back(genMuon.status());
-                int  isFromTau = hasTauasMother(genMuon);
-                T_Gen_Muon_fromTAU->push_back(isFromTau);
-                if (genMuon.numberOfMothers()>0) {
-                    const reco::Candidate  *part = (genMuon.mother());
-                    const reco::Candidate  *MomPart =(genMuon.mother()); //dummy initialisation :)
-                    // loop on the  particles to check if is has a W has mother
-                    while ((part->numberOfMothers()>0)) {
-                        MomPart =part->mother();
-                        if ((fabs(MomPart->pdgId())>=22)&&(fabs(MomPart->pdgId())<=24)){
-                            break;
+                if (minDr<0.1) theGenPartRef = iteMinDr;
+                
+                
+                if (theGenPartRef>=0){
+                    const reco::GenParticle & genMuon = (*genParticles)[theGenPartRef];
+                    T_Gen_Muon_softMuon->push_back(isNonPromptElectron(genMuon));
+                    T_Gen_Muon_Px->push_back(genMuon.px());
+                    T_Gen_Muon_Py->push_back(genMuon.py());
+                    T_Gen_Muon_Pz->push_back(genMuon.pz());
+                    T_Gen_Muon_Energy->push_back(genMuon.energy());
+                    T_Gen_Muon_PDGid->push_back(genMuon.pdgId());
+                    T_Gen_Muon_status->push_back(genMuon.status());
+                    int  isFromTau = hasTauasMother(genMuon);
+                    T_Gen_Muon_fromTAU->push_back(isFromTau);
+                    if (genMuon.numberOfMothers()>0) {
+                        const reco::Candidate  *part = (genMuon.mother());
+                        const reco::Candidate  *MomPart =(genMuon.mother()); //dummy initialisation :)
+                        // loop on the  particles to check if is has a W has mother
+                        while ((part->numberOfMothers()>0)) {
+                            MomPart =part->mother();
+                            if ((fabs(MomPart->pdgId())>=22)&&(fabs(MomPart->pdgId())<=24)){
+                                break;
+                            }
+                            part = MomPart;
                         }
-                        part = MomPart;
+                        T_Gen_Muon_MotherID->push_back(MomPart->pdgId());
+                        if (MomPart->numberOfMothers()>0) {
+                            const reco::Candidate  *grandMa = MomPart->mother();
+                            T_Gen_Muon_GndMotherID->push_back(grandMa->pdgId());
+                        }
+                        else T_Gen_Muon_GndMotherID->push_back(-1);
                     }
-                    T_Gen_Muon_MotherID->push_back(MomPart->pdgId());
-                    if (MomPart->numberOfMothers()>0) {
-                        const reco::Candidate  *grandMa = MomPart->mother();
-                        T_Gen_Muon_GndMotherID->push_back(grandMa->pdgId());
+                    else {
+                        T_Gen_Muon_MotherID->push_back(-1);
+                        T_Gen_Muon_GndMotherID->push_back(-1);
                     }
-                    else T_Gen_Muon_GndMotherID->push_back(-1);
                 }
-                else {
+                else{
+                    T_Gen_Muon_Px->push_back(-1);
+                    T_Gen_Muon_Py->push_back(-1);
+                    T_Gen_Muon_Pz->push_back(-1);
+                    T_Gen_Muon_Energy->push_back(-1);
+                    T_Gen_Muon_PDGid->push_back(-1);
                     T_Gen_Muon_MotherID->push_back(-1);
                     T_Gen_Muon_GndMotherID->push_back(-1);
+                    T_Gen_Muon_status->push_back(-1);
+                    T_Gen_Muon_fromTAU->push_back(-1);
+                    T_Gen_Muon_softMuon->push_back(-1);
+                }
+                
+                
+            }
+            //now look if the electron is matched with trigger
+            //FIXME remove the double couting
+            int theLegInfo = 0;
+            for (unsigned int iteTrigObj = 0 ; iteTrigObj < filterToMatch_.size() ; iteTrigObj++){
+                bool foundTheLeg = false;
+                for (unsigned int i = 0 ; i < legObjects.size() ; i++){
+                    if (legRefs.at(i)==iteTrigObj) continue;
+                    float deltaR = sqrt(pow(legObjects[i].eta()-muon->eta(),2)+ pow(acos(cos(legObjects[i].phi()-muon->phi())),2)) ;
+                    if (deltaR<0.1) {
+                        foundTheLeg = true;
+                    }
+                }
+                if (foundTheLeg){
+                    theLegInfo += std::pow(2,iteTrigObj);
                 }
             }
-            else{
-                T_Gen_Muon_Px->push_back(-1);
-                T_Gen_Muon_Py->push_back(-1);
-                T_Gen_Muon_Pz->push_back(-1);
-                T_Gen_Muon_Energy->push_back(-1);
-                T_Gen_Muon_PDGid->push_back(-1);
-                T_Gen_Muon_MotherID->push_back(-1);
-                T_Gen_Muon_GndMotherID->push_back(-1);
-                T_Gen_Muon_status->push_back(-1);
-                T_Gen_Muon_fromTAU->push_back(-1);
-                T_Gen_Muon_softMuon->push_back(-1);
-            }
+            T_Muon_TriggerLeg->push_back(theLegInfo);
             
             
-        }
-        //now look if the electron is matched with trigger
-        //FIXME remove the double couting
-        int theLegInfo = 0;
-        for (unsigned int iteTrigObj = 0 ; iteTrigObj < filterToMatch_.size() ; iteTrigObj++){
-            bool foundTheLeg = false;
-            for (unsigned int i = 0 ; i < legObjects.size() ; i++){
-                if (legRefs.at(i)==iteTrigObj) continue;
-                float deltaR = sqrt(pow(legObjects[i].eta()-muon->eta(),2)+ pow(acos(cos(legObjects[i].phi()-muon->phi())),2)) ;
-                if (deltaR<0.1) {
-                    foundTheLeg = true;
-                }
+            T_Muon_Eta->push_back(muon->eta());
+            T_Muon_Phi->push_back(muon->phi());
+            T_Muon_IsGlobalMuon->push_back(muon->isGlobalMuon());
+            T_Muon_IsPFMuon->push_back(muon->isPFMuon());
+            T_Muon_IsTrackerMuon->push_back(muon->isTrackerMuon());
+            T_Muon_IsCaloMuon->push_back(muon->isCaloMuon());
+            T_Muon_IsStandAloneMuon->push_back(muon->isStandAloneMuon());
+            T_Muon_IsMuon->push_back(muon->isMuon());
+            T_Muon_Energy->push_back(muon->energy());
+            T_Muon_Et->push_back(muon->et());
+            T_Muon_Pt->push_back(muon->pt());
+            T_Muon_Px->push_back(muon->px());
+            T_Muon_Py->push_back(muon->py());
+            T_Muon_Pz->push_back(muon->pz());
+            T_Muon_Mass->push_back(muon->mass());
+            T_Muon_charge->push_back(muon->charge());
+            
+            T_Muon_numberOfChambers->push_back(muon->numberOfChambers());
+            T_Muon_numberOfChambersRPC->push_back(muon->numberOfChambersNoRPC());
+            T_Muon_numberOfMatches->push_back(muon->numberOfMatches());
+            T_Muon_numberOfMatchedStations->push_back(muon->numberOfMatchedStations());
+            bool isMatchTheStation = muon::isGoodMuon(*muon, muon::TMOneStationTight);
+            bool isGlobalMuonPT = muon::isGoodMuon(*muon, muon::GlobalMuonPromptTight);
+            bool isGlobalMuonArbitrated = muon::isGoodMuon(*muon, muon::TrackerMuonArbitrated);
+            T_Muon_TMLastStationTight->push_back(isMatchTheStation);
+            T_Muon_IsGlobalMuon_PromptTight->push_back(isGlobalMuonPT);
+            T_Muon_IsTrackerMuonArbitrated->push_back(isGlobalMuonArbitrated);
+            
+            if (muon->globalTrack().isNull()) T_Muon_globalTrackChi2->push_back(-1); else T_Muon_globalTrackChi2->push_back(muon->globalTrack()->normalizedChi2());
+            if (muon->globalTrack().isNull()) T_Muon_validMuonHits->push_back(-1); else T_Muon_validMuonHits->push_back(muon->globalTrack()->hitPattern().numberOfValidMuonHits());
+            T_Muon_trkKink->push_back(muon->combinedQuality().trkKink);
+            if (muon->muonBestTrack().isNull()) {
+                T_Muon_trkNbOfTrackerLayers->push_back(-1);
+                T_Muon_trkError->push_back(-1);
+                T_Muon_dB->push_back(-1);
+                T_Muon_dBstop->push_back(-1);
+                T_Muon_dzPV->push_back(-1);
+                T_Muon_dzstop->push_back(-1);
+                T_Muon_trkValidPixelHits->push_back(-1);
+                T_Muon_trkNbOfValidTrackeHits->push_back(-1);
             }
-            if (foundTheLeg){
-                theLegInfo += std::pow(2,iteTrigObj);
+            else {
+                T_Muon_trkNbOfTrackerLayers->push_back(muon->muonBestTrack()->hitPattern().trackerLayersWithMeasurement());
+                T_Muon_trkError->push_back(muon->muonBestTrack()->ptError());
+                T_Muon_trkValidPixelHits->push_back(muon->muonBestTrack()->hitPattern().numberOfValidPixelHits());
+                T_Muon_dB->push_back(fabs(muon->muonBestTrack()->dxy(pv->position())));
+                T_Muon_dBstop->push_back(fabs(muon->muonBestTrack()->dxy(pv->position())));
+                T_Muon_dzPV->push_back(fabs(muon->muonBestTrack()->dz(pv->position())));
+                T_Muon_dzstop->push_back(fabs(muon->muonBestTrack()->dz(pv->position())));
+                T_Muon_trkNbOfValidTrackeHits->push_back(muon->muonBestTrack()->hitPattern().numberOfValidTrackerHits());
             }
-        }
-        T_Muon_TriggerLeg->push_back(theLegInfo);
-        
-        
-        T_Muon_Eta->push_back(muon->eta());
-        T_Muon_Phi->push_back(muon->phi());
-        T_Muon_IsGlobalMuon->push_back(muon->isGlobalMuon());
-        T_Muon_IsPFMuon->push_back(muon->isPFMuon());
-        T_Muon_IsTrackerMuon->push_back(muon->isTrackerMuon());
-        T_Muon_IsCaloMuon->push_back(muon->isCaloMuon());
-        T_Muon_IsStandAloneMuon->push_back(muon->isStandAloneMuon());
-        T_Muon_IsMuon->push_back(muon->isMuon());
-        T_Muon_Energy->push_back(muon->energy());
-        T_Muon_Et->push_back(muon->et());
-        T_Muon_Pt->push_back(muon->pt());
-        T_Muon_Px->push_back(muon->px());
-        T_Muon_Py->push_back(muon->py());
-        T_Muon_Pz->push_back(muon->pz());
-        T_Muon_Mass->push_back(muon->mass());
-        T_Muon_charge->push_back(muon->charge());
-        
-        T_Muon_numberOfChambers->push_back(muon->numberOfChambers());
-        T_Muon_numberOfChambersRPC->push_back(muon->numberOfChambersNoRPC());
-        T_Muon_numberOfMatches->push_back(muon->numberOfMatches());
-        T_Muon_numberOfMatchedStations->push_back(muon->numberOfMatchedStations());
-        bool isMatchTheStation = muon::isGoodMuon(*muon, muon::TMOneStationTight);
-        bool isGlobalMuonPT = muon::isGoodMuon(*muon, muon::GlobalMuonPromptTight);
-        bool isGlobalMuonArbitrated = muon::isGoodMuon(*muon, muon::TrackerMuonArbitrated);
-        T_Muon_TMLastStationTight->push_back(isMatchTheStation);
-        T_Muon_IsGlobalMuon_PromptTight->push_back(isGlobalMuonPT);
-        T_Muon_IsTrackerMuonArbitrated->push_back(isGlobalMuonArbitrated);
-        
-        if (muon->globalTrack().isNull()) T_Muon_globalTrackChi2->push_back(-1); else T_Muon_globalTrackChi2->push_back(muon->globalTrack()->normalizedChi2());
-        if (muon->globalTrack().isNull()) T_Muon_validMuonHits->push_back(-1); else T_Muon_validMuonHits->push_back(muon->globalTrack()->hitPattern().numberOfValidMuonHits());
-        T_Muon_trkKink->push_back(muon->combinedQuality().trkKink);
-        if (muon->muonBestTrack().isNull()) {
-            T_Muon_trkNbOfTrackerLayers->push_back(-1);
-            T_Muon_trkError->push_back(-1);
-            T_Muon_dB->push_back(-1);
-            T_Muon_dBstop->push_back(-1);
-            T_Muon_dzPV->push_back(-1);
-            T_Muon_dzstop->push_back(-1);
-            T_Muon_trkValidPixelHits->push_back(-1);
-            T_Muon_trkNbOfValidTrackeHits->push_back(-1);
-        }
-        else {
-            T_Muon_trkNbOfTrackerLayers->push_back(muon->muonBestTrack()->hitPattern().trackerLayersWithMeasurement());
-            T_Muon_trkError->push_back(muon->muonBestTrack()->ptError());
-            T_Muon_trkValidPixelHits->push_back(muon->muonBestTrack()->hitPattern().numberOfValidPixelHits());
-            T_Muon_dB->push_back(fabs(muon->muonBestTrack()->dxy(pv->position())));
-            T_Muon_dBstop->push_back(fabs(muon->muonBestTrack()->dxy(pv->position())));
-            T_Muon_dzPV->push_back(fabs(muon->muonBestTrack()->dz(pv->position())));
-            T_Muon_dzstop->push_back(fabs(muon->muonBestTrack()->dz(pv->position())));
-            T_Muon_trkNbOfValidTrackeHits->push_back(muon->muonBestTrack()->hitPattern().numberOfValidTrackerHits());
-        }
-        T_Muon_isoR03_emEt->push_back(muon->isolationR03().emEt);
-        T_Muon_isoR03_hadEt->push_back(muon->isolationR03().hadEt);
-        T_Muon_isoR03_hoEt->push_back(muon->isolationR03().hoEt);
-        T_Muon_isoR03_sumPt->push_back(muon->isolationR03().sumPt);
-        T_Muon_isoR03_nTracks->push_back(muon->isolationR03().nTracks);
-        T_Muon_isoR03_nJets->push_back(muon->isolationR03().nJets);
-        T_Muon_chargedHadronIsoR04->push_back(muon->pfIsolationR04().sumChargedHadronPt);
-        T_Muon_neutralHadronIsoR04->push_back(muon->pfIsolationR04().sumNeutralHadronEt);
-        T_Muon_photonIsoR04->push_back(muon->pfIsolationR04().sumPhotonEt);
-        T_Muon_chargedHadronIsoPUR04->push_back(muon->pfIsolationR04().sumPUPt);
-        T_Muon_chargedHadronIsoR03->push_back(muon->pfIsolationR03().sumChargedHadronPt);
-        T_Muon_neutralHadronIsoR03->push_back(muon->pfIsolationR03().sumNeutralHadronEt);
-        T_Muon_photonIsoR03->push_back(muon->pfIsolationR03().sumPhotonEt);
-        T_Muon_chargedHadronIsoPUR03->push_back(muon->pfIsolationR03().sumPUPt);
+            T_Muon_isoR03_emEt->push_back(muon->isolationR03().emEt);
+            T_Muon_isoR03_hadEt->push_back(muon->isolationR03().hadEt);
+            T_Muon_isoR03_hoEt->push_back(muon->isolationR03().hoEt);
+            T_Muon_isoR03_sumPt->push_back(muon->isolationR03().sumPt);
+            T_Muon_isoR03_nTracks->push_back(muon->isolationR03().nTracks);
+            T_Muon_isoR03_nJets->push_back(muon->isolationR03().nJets);
+            T_Muon_chargedHadronIsoR04->push_back(muon->pfIsolationR04().sumChargedHadronPt);
+            T_Muon_neutralHadronIsoR04->push_back(muon->pfIsolationR04().sumNeutralHadronEt);
+            T_Muon_photonIsoR04->push_back(muon->pfIsolationR04().sumPhotonEt);
+            T_Muon_chargedHadronIsoPUR04->push_back(muon->pfIsolationR04().sumPUPt);
+            T_Muon_chargedHadronIsoR03->push_back(muon->pfIsolationR03().sumChargedHadronPt);
+            T_Muon_neutralHadronIsoR03->push_back(muon->pfIsolationR03().sumNeutralHadronEt);
+            T_Muon_photonIsoR03->push_back(muon->pfIsolationR03().sumPhotonEt);
+            T_Muon_chargedHadronIsoPUR03->push_back(muon->pfIsolationR03().sumPUPt);
 
+        }
     }
     
     mytree_->Fill();
@@ -905,69 +908,71 @@ ElecIdTreeProducer::beginJob()
     
     //muons
     
-    mytree_->Branch("T_Muon_TriggerLeg", "std::vector<int>", &T_Muon_TriggerLeg);
+    if (doMuon_){
+        mytree_->Branch("T_Muon_TriggerLeg", "std::vector<int>", &T_Muon_TriggerLeg);
 
-    mytree_->Branch("T_Muon_Eta", "std::vector<float>", &T_Muon_Eta);
-    mytree_->Branch("T_Muon_Phi", "std::vector<float>", &T_Muon_Phi);
-    mytree_->Branch("T_Muon_Energy", "std::vector<float>", &T_Muon_Energy);
-    mytree_->Branch("T_Muon_Et", "std::vector<float>", &T_Muon_Et);
-    mytree_->Branch("T_Muon_Pt", "std::vector<float>", &T_Muon_Pt);
-    mytree_->Branch("T_Muon_Px", "std::vector<float>", &T_Muon_Px);
-    mytree_->Branch("T_Muon_Py", "std::vector<float>", &T_Muon_Py);
-    mytree_->Branch("T_Muon_Pz", "std::vector<float>", &T_Muon_Pz);
-    mytree_->Branch("T_Muon_Mass", "std::vector<float>", &T_Muon_Mass);
-    mytree_->Branch("T_Muon_IsGlobalMuon", "std::vector<bool>", &T_Muon_IsGlobalMuon);
-    mytree_->Branch("T_Muon_IsTrackerMuon", "std::vector<bool>", &T_Muon_IsTrackerMuon);
-    mytree_->Branch("T_Muon_IsPFMuon", "std::vector<bool>", &T_Muon_IsPFMuon);
-    mytree_->Branch("T_Muon_IsCaloMuon", "std::vector<bool>", &T_Muon_IsCaloMuon);
-    mytree_->Branch("T_Muon_IsStandAloneMuon", "std::vector<bool>", &T_Muon_IsStandAloneMuon);
-    mytree_->Branch("T_Muon_IsMuon", "std::vector<bool>", &T_Muon_IsMuon);
-    mytree_->Branch("T_Muon_IsGlobalMuon_PromptTight", "std::vector<bool>", &T_Muon_IsGlobalMuon_PromptTight);
-    mytree_->Branch("T_Muon_IsTrackerMuonArbitrated", "std::vector<bool>", &T_Muon_IsTrackerMuonArbitrated);
-    mytree_->Branch("T_Muon_numberOfChambers", "std::vector<int>", &T_Muon_numberOfChambers);
-    mytree_->Branch("T_Muon_numberOfChambersRPC", "std::vector<int>", &T_Muon_numberOfChambersRPC);
-    mytree_->Branch("T_Muon_numberOfMatches", "std::vector<int>", &T_Muon_numberOfMatches);
-    mytree_->Branch("T_Muon_numberOfMatchedStations", "std::vector<int>", &T_Muon_numberOfMatchedStations);
-    mytree_->Branch("T_Muon_charge", "std::vector<int>", &T_Muon_charge);
-    mytree_->Branch("T_Muon_TMLastStationTight", "std::vector<bool>", &T_Muon_TMLastStationTight);
-    mytree_->Branch("T_Muon_globalTrackChi2", "std::vector<float>", &T_Muon_globalTrackChi2);
-    mytree_->Branch("T_Muon_validMuonHits", "std::vector<int>", &T_Muon_validMuonHits);
-    mytree_->Branch("T_Muon_trkKink", "std::vector<float>", &T_Muon_trkKink);
-    mytree_->Branch("T_Muon_trkNbOfTrackerLayers", "std::vector<int>", &T_Muon_trkNbOfTrackerLayers);
-    mytree_->Branch("T_Muon_trkNbOfValidTrackeHits", "std::vector<int>", &T_Muon_trkNbOfValidTrackeHits);
-    mytree_->Branch("T_Muon_trkValidPixelHits", "std::vector<int>", &T_Muon_trkValidPixelHits);
-    mytree_->Branch("T_Muon_trkError", "std::vector<float>", &T_Muon_trkError);
-    mytree_->Branch("T_Muon_dB", "std::vector<float>", &T_Muon_dB);
-    mytree_->Branch("T_Muon_dzPV", "std::vector<float>", &T_Muon_dzPV);
-    mytree_->Branch("T_Muon_dBstop", "std::vector<float>", &T_Muon_dBstop);
-    mytree_->Branch("T_Muon_dzstop", "std::vector<float>", &T_Muon_dzstop);
-    mytree_->Branch("T_Muon_chargedHadronIsoR04", "std::vector<float>", &T_Muon_chargedHadronIsoR04);
-    mytree_->Branch("T_Muon_neutralHadronIsoR04", "std::vector<float>", &T_Muon_neutralHadronIsoR04);
-    mytree_->Branch("T_Muon_photonIsoR04", "std::vector<float>", &T_Muon_photonIsoR04);
-    mytree_->Branch("T_Muon_chargedHadronIsoPUR04", "std::vector<float>", &T_Muon_chargedHadronIsoPUR04);
-    mytree_->Branch("T_Muon_chargedHadronIsoR03", "std::vector<float>", &T_Muon_chargedHadronIsoR03);
-    mytree_->Branch("T_Muon_neutralHadronIsoR03", "std::vector<float>", &T_Muon_neutralHadronIsoR03);
-    mytree_->Branch("T_Muon_photonIsoR03", "std::vector<float>", &T_Muon_photonIsoR03);
-    mytree_->Branch("T_Muon_chargedHadronIsoPUR03", "std::vector<float>", &T_Muon_chargedHadronIsoPUR03);
-    mytree_->Branch("T_Muon_isoR03_emEt", "std::vector<float>", &T_Muon_isoR03_emEt);
-    mytree_->Branch("T_Muon_isoR03_hadEt", "std::vector<float>", &T_Muon_isoR03_hadEt);
-    mytree_->Branch("T_Muon_isoR03_hoEt", "std::vector<float>", &T_Muon_isoR03_hoEt);
-    mytree_->Branch("T_Muon_isoR03_sumPt", "std::vector<float>", &T_Muon_isoR03_sumPt);
-    mytree_->Branch("T_Muon_isoR03_nTracks", "std::vector<int>", &T_Muon_isoR03_nTracks);
-    mytree_->Branch("T_Muon_isoR03_nJets", "std::vector<int>", &T_Muon_isoR03_nJets);
-    mytree_->Branch("T_Muon_isoRingsMVA", "std::vector<float>", &T_Muon_isoRingsMVA);
-    
-    
-    mytree_->Branch("T_Gen_Muon_Px", "std::vector<float>", &T_Gen_Muon_Px);
-    mytree_->Branch("T_Gen_Muon_Py", "std::vector<float>", &T_Gen_Muon_Py);
-    mytree_->Branch("T_Gen_Muon_Pz", "std::vector<float>", &T_Gen_Muon_Pz);
-    mytree_->Branch("T_Gen_Muon_Energy", "std::vector<float>", &T_Gen_Muon_Energy);
-    mytree_->Branch("T_Gen_Muon_status", "std::vector<int>", &T_Gen_Muon_status);
-    mytree_->Branch("T_Gen_Muon_PDGid", "std::vector<int>", &T_Gen_Muon_PDGid);
-    mytree_->Branch("T_Gen_Muon_MotherID", "std::vector<int>", &T_Gen_Muon_MotherID);
-    mytree_->Branch("T_Gen_Muon_GndMotherID", "std::vector<int>", &T_Gen_Muon_GndMotherID);
-    mytree_->Branch("T_Gen_Muon_fromTAU", "std::vector<int>", &T_Gen_Muon_fromTAU);
-    mytree_->Branch("T_Gen_Muon_softMuon", "std::vector<int>", &T_Gen_Muon_softMuon);
+        mytree_->Branch("T_Muon_Eta", "std::vector<float>", &T_Muon_Eta);
+        mytree_->Branch("T_Muon_Phi", "std::vector<float>", &T_Muon_Phi);
+        mytree_->Branch("T_Muon_Energy", "std::vector<float>", &T_Muon_Energy);
+        mytree_->Branch("T_Muon_Et", "std::vector<float>", &T_Muon_Et);
+        mytree_->Branch("T_Muon_Pt", "std::vector<float>", &T_Muon_Pt);
+        mytree_->Branch("T_Muon_Px", "std::vector<float>", &T_Muon_Px);
+        mytree_->Branch("T_Muon_Py", "std::vector<float>", &T_Muon_Py);
+        mytree_->Branch("T_Muon_Pz", "std::vector<float>", &T_Muon_Pz);
+        mytree_->Branch("T_Muon_Mass", "std::vector<float>", &T_Muon_Mass);
+        mytree_->Branch("T_Muon_IsGlobalMuon", "std::vector<bool>", &T_Muon_IsGlobalMuon);
+        mytree_->Branch("T_Muon_IsTrackerMuon", "std::vector<bool>", &T_Muon_IsTrackerMuon);
+        mytree_->Branch("T_Muon_IsPFMuon", "std::vector<bool>", &T_Muon_IsPFMuon);
+        mytree_->Branch("T_Muon_IsCaloMuon", "std::vector<bool>", &T_Muon_IsCaloMuon);
+        mytree_->Branch("T_Muon_IsStandAloneMuon", "std::vector<bool>", &T_Muon_IsStandAloneMuon);
+        mytree_->Branch("T_Muon_IsMuon", "std::vector<bool>", &T_Muon_IsMuon);
+        mytree_->Branch("T_Muon_IsGlobalMuon_PromptTight", "std::vector<bool>", &T_Muon_IsGlobalMuon_PromptTight);
+        mytree_->Branch("T_Muon_IsTrackerMuonArbitrated", "std::vector<bool>", &T_Muon_IsTrackerMuonArbitrated);
+        mytree_->Branch("T_Muon_numberOfChambers", "std::vector<int>", &T_Muon_numberOfChambers);
+        mytree_->Branch("T_Muon_numberOfChambersRPC", "std::vector<int>", &T_Muon_numberOfChambersRPC);
+        mytree_->Branch("T_Muon_numberOfMatches", "std::vector<int>", &T_Muon_numberOfMatches);
+        mytree_->Branch("T_Muon_numberOfMatchedStations", "std::vector<int>", &T_Muon_numberOfMatchedStations);
+        mytree_->Branch("T_Muon_charge", "std::vector<int>", &T_Muon_charge);
+        mytree_->Branch("T_Muon_TMLastStationTight", "std::vector<bool>", &T_Muon_TMLastStationTight);
+        mytree_->Branch("T_Muon_globalTrackChi2", "std::vector<float>", &T_Muon_globalTrackChi2);
+        mytree_->Branch("T_Muon_validMuonHits", "std::vector<int>", &T_Muon_validMuonHits);
+        mytree_->Branch("T_Muon_trkKink", "std::vector<float>", &T_Muon_trkKink);
+        mytree_->Branch("T_Muon_trkNbOfTrackerLayers", "std::vector<int>", &T_Muon_trkNbOfTrackerLayers);
+        mytree_->Branch("T_Muon_trkNbOfValidTrackeHits", "std::vector<int>", &T_Muon_trkNbOfValidTrackeHits);
+        mytree_->Branch("T_Muon_trkValidPixelHits", "std::vector<int>", &T_Muon_trkValidPixelHits);
+        mytree_->Branch("T_Muon_trkError", "std::vector<float>", &T_Muon_trkError);
+        mytree_->Branch("T_Muon_dB", "std::vector<float>", &T_Muon_dB);
+        mytree_->Branch("T_Muon_dzPV", "std::vector<float>", &T_Muon_dzPV);
+        mytree_->Branch("T_Muon_dBstop", "std::vector<float>", &T_Muon_dBstop);
+        mytree_->Branch("T_Muon_dzstop", "std::vector<float>", &T_Muon_dzstop);
+        mytree_->Branch("T_Muon_chargedHadronIsoR04", "std::vector<float>", &T_Muon_chargedHadronIsoR04);
+        mytree_->Branch("T_Muon_neutralHadronIsoR04", "std::vector<float>", &T_Muon_neutralHadronIsoR04);
+        mytree_->Branch("T_Muon_photonIsoR04", "std::vector<float>", &T_Muon_photonIsoR04);
+        mytree_->Branch("T_Muon_chargedHadronIsoPUR04", "std::vector<float>", &T_Muon_chargedHadronIsoPUR04);
+        mytree_->Branch("T_Muon_chargedHadronIsoR03", "std::vector<float>", &T_Muon_chargedHadronIsoR03);
+        mytree_->Branch("T_Muon_neutralHadronIsoR03", "std::vector<float>", &T_Muon_neutralHadronIsoR03);
+        mytree_->Branch("T_Muon_photonIsoR03", "std::vector<float>", &T_Muon_photonIsoR03);
+        mytree_->Branch("T_Muon_chargedHadronIsoPUR03", "std::vector<float>", &T_Muon_chargedHadronIsoPUR03);
+        mytree_->Branch("T_Muon_isoR03_emEt", "std::vector<float>", &T_Muon_isoR03_emEt);
+        mytree_->Branch("T_Muon_isoR03_hadEt", "std::vector<float>", &T_Muon_isoR03_hadEt);
+        mytree_->Branch("T_Muon_isoR03_hoEt", "std::vector<float>", &T_Muon_isoR03_hoEt);
+        mytree_->Branch("T_Muon_isoR03_sumPt", "std::vector<float>", &T_Muon_isoR03_sumPt);
+        mytree_->Branch("T_Muon_isoR03_nTracks", "std::vector<int>", &T_Muon_isoR03_nTracks);
+        mytree_->Branch("T_Muon_isoR03_nJets", "std::vector<int>", &T_Muon_isoR03_nJets);
+        mytree_->Branch("T_Muon_isoRingsMVA", "std::vector<float>", &T_Muon_isoRingsMVA);
+        
+        
+        mytree_->Branch("T_Gen_Muon_Px", "std::vector<float>", &T_Gen_Muon_Px);
+        mytree_->Branch("T_Gen_Muon_Py", "std::vector<float>", &T_Gen_Muon_Py);
+        mytree_->Branch("T_Gen_Muon_Pz", "std::vector<float>", &T_Gen_Muon_Pz);
+        mytree_->Branch("T_Gen_Muon_Energy", "std::vector<float>", &T_Gen_Muon_Energy);
+        mytree_->Branch("T_Gen_Muon_status", "std::vector<int>", &T_Gen_Muon_status);
+        mytree_->Branch("T_Gen_Muon_PDGid", "std::vector<int>", &T_Gen_Muon_PDGid);
+        mytree_->Branch("T_Gen_Muon_MotherID", "std::vector<int>", &T_Gen_Muon_MotherID);
+        mytree_->Branch("T_Gen_Muon_GndMotherID", "std::vector<int>", &T_Gen_Muon_GndMotherID);
+        mytree_->Branch("T_Gen_Muon_fromTAU", "std::vector<int>", &T_Gen_Muon_fromTAU);
+        mytree_->Branch("T_Gen_Muon_softMuon", "std::vector<int>", &T_Gen_Muon_softMuon);
+    }
     
     //jets
     mytree_->Branch("T_Jet_Px", "std::vector<float>", &T_Jet_Px);

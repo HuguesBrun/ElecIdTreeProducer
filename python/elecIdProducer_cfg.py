@@ -12,7 +12,7 @@ process.load("Configuration/StandardSequences/FrontierConditions_GlobalTag_cff")
 process.load("Configuration.StandardSequences.Reconstruction_cff")
 process.load("Configuration.StandardSequences.Services_cff")
 
-process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(-1) )
+process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(1000) )
 
 process.MessageLogger.cerr.FwkReport.reportEvery = 10
 
@@ -20,18 +20,14 @@ process.MessageLogger.cerr.FwkReport.reportEvery = 10
 process.source = cms.Source("PoolSource",
     # replace 'myfile.root' with the source file you want to use
     fileNames = cms.untracked.vstring(
-                                      #'file:/tmp/hbrun/theLocalReco.root'
-                                      #'file:/tmp/hbrun/theDY_70_file.root'
-			#		'file:/tmp/hbrun/theDYfileInAOD.root'
-					'file:/tmp/hbrun/runRECO/step3_new.root'
-                                      #'file:/tmp/hbrun/theDYfile_new.root'
+                                      'file:/tmp/hbrun/theDYJetFile.root'
     )
 )
 
 
 process.GlobalTag.globaltag = 'FT_R_70_V1::All'
 if (isMC):
-    process.GlobalTag.globaltag = 'POSTLS170_V5::All'
+    process.GlobalTag.globaltag = 'PHYS14_25_V1::All'
 
 
 typeProcess = "reRECO"
@@ -40,6 +36,7 @@ if (isMC):
 
 process.ElecIdTreeProducer = cms.EDAnalyzer('ElecIdTreeProducer',
     isMC                        = cms.bool(False),
+    doMuon                      = cms.bool(False),
     electronsCollection       	= cms.InputTag("gedGsfElectrons","",typeProcess),
     muonProducer 	         	= cms.VInputTag(cms.InputTag("muons")),
     primaryVertexInputTag   	= cms.InputTag("offlinePrimaryVertices","",typeProcess),
@@ -47,7 +44,7 @@ process.ElecIdTreeProducer = cms.EDAnalyzer('ElecIdTreeProducer',
     rechitCollectionEE   	= cms.InputTag("reducedEcalRecHitsEE","",typeProcess),
     conversionsCollection   = cms.InputTag("allConversions","",typeProcess),
     beamSpotInputTag   = cms.InputTag("offlineBeamSpot","",typeProcess),
-    rhoTags =               cms.VInputTag(cms.InputTag("kt6PFJetsForIsolation","rho","runAnalyzer")),
+                                            rhoTags =               cms.VInputTag(cms.InputTag("kt6PFJetsForIsolation","rho","runAnalyzer")),#,cms.InputTag("fixedGridRhoAll","","RECO"), cms.InputTag("fixedGridRhoFastjetAll","","RECO"), cms.InputTag("fixedGridRhoFastjetAllCalo","","RECO"), cms.InputTag("fixedGridRhoFastjetCentralCalo","","RECO"), cms.InputTag("fixedGridRhoFastjetCentralChargedPileUp","","RECO"), cms.InputTag("fixedGridRhoFastjetCentralNeutral","","RECO")),
     metTag     = cms.InputTag("pfMet", "", typeProcess),
     jetCollectionTag     = cms.InputTag("ak5PFJets", "", typeProcess),
     triggerResultTag     = cms.InputTag("TriggerResults", "", "HLT"),
