@@ -149,6 +149,7 @@ private:
     bool isMC_;
     bool doMuon_;
     edm::InputTag electronsCollection_;
+    std::vector<edm::InputTag> eledIdInputTags_;
     edm::InputTag primaryVertexInputTag_;
     vtag muonProducers_;
     edm::InputTag EBRecHitsLabel_;
@@ -232,6 +233,13 @@ private:
     std::vector<float> *T_Elec_Energy;
     std::vector<int> *T_Elec_Charge;
     
+    
+    //id information
+    std::vector<int> *T_Elec_Veto;
+    std::vector<int> *T_Elec_Loose;
+    std::vector<int> *T_Elec_Medium;
+    std::vector<int> *T_Elec_Tight;
+
     //position in ECAL
     std::vector<int> *T_Elec_isEB;
     std::vector<int> *T_Elec_isEE;
@@ -471,5 +479,5 @@ private:
 };
 
 typedef std::vector< edm::Handle< double > >   rhoHandles;
-
+typedef std::vector< edm::Handle< edm::ValueMap<bool> > >   eledIDHandles;
 

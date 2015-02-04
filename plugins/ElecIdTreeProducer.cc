@@ -17,6 +17,8 @@ ElecIdTreeProducer::ElecIdTreeProducer(const edm::ParameterSet& iConfig)
     ecalRechitEBToken_ = consumes<EcalRecHitCollection>(EBRecHitsLabel_);
     ecalRechitEEToken_ = consumes<EcalRecHitCollection>(EERecHitsLabel_);
     
+    eledIdInputTags_ = iConfig.getParameter<std::vector<edm::InputTag> >("elecIdName");
+    
     conversionsInputTag_ = iConfig.getParameter<edm::InputTag>("conversionsCollection");
     beamSpotInputTag_ = iConfig.getParameter<edm::InputTag>("beamSpotInputTag");
     rhoInputTags_ = iConfig.getParameter<std::vector<edm::InputTag> >("rhoTags");
@@ -136,7 +138,20 @@ ElecIdTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
          T_Event_Rho->push_back(*rhos[iteRho]);
      }
     
+    //get the IDs
+    eledIDHandles eledIDs(eledIdInputTags_.size());
+    for (unsigned int iteElecID = 0 ; iteElecID < eledIdInputTags_.size() ; iteElecID++){
+        iEvent.getByLabel(eledIdInputTags_[iteElecID], eledIDs[iteElecID]);
+    }
+    const edm::ValueMap<bool> & mapVetoElec = *(eledIDs[0]);
+    const edm::ValueMap<bool> & mapLooseElec = *(eledIDs[1]);
+    const edm::ValueMap<bool> & mapMediumElec = *(eledIDs[2]);
+    const edm::ValueMap<bool> & mapTightElec = *(eledIDs[3]);
 
+
+    
+    
+    
     noZS::EcalClusterLazyTools lazyToolsNoZS(iEvent, iSetup, ecalRechitEBToken_, ecalRechitEBToken_);
     EcalClusterLazyTools lazyTools(iEvent, iSetup, ecalRechitEBToken_, ecalRechitEEToken_);
 
@@ -255,6 +270,7 @@ ElecIdTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
     // cout << "nbGen=" << theNbOfGenParticles << endl;
     
     /// now start the loop on the electrons:
+    unsigned int eleIndex = 0;
     for(reco::GsfElectronCollection::const_iterator eleIt = electronsCollection->begin(); eleIt != electronsCollection->end(); eleIt++){
           //cout << "pt=" << eleIt->pt() << endl;
         
@@ -331,7 +347,7 @@ ElecIdTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
         for (unsigned int iteTrigObj = 0 ; iteTrigObj < filterToMatch_.size() ; iteTrigObj++){
             bool foundTheLeg = false;
             for (unsigned int i = 0 ; i < legObjects.size() ; i++){
-                if (legRefs.at(i)==iteTrigObj) continue;
+                if (legRefs.at(i)!=iteTrigObj) continue;
                 float deltaR = sqrt(pow(legObjects[i].eta()-eleIt->eta(),2)+ pow(acos(cos(legObjects[i].phi()-eleIt->phi())),2)) ;
                 if (deltaR<0.1) {
                     foundTheLeg = true;
@@ -355,6 +371,13 @@ ElecIdTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
         T_Elec_vx->push_back(eleIt->vx());
         T_Elec_vy->push_back(eleIt->vy());
         T_Elec_vz->push_back(eleIt->vz());
+       
+ 
+        edm::Ref<reco::GsfElectronCollection> electronRef(electronsCollection,eleIndex); eleIndex++; //reference to the electron        
+        T_Elec_Veto->push_back(mapVetoElec[electronRef]);
+        T_Elec_Loose->push_back(mapLooseElec[electronRef]);
+        T_Elec_Medium->push_back(mapMediumElec[electronRef]);
+        T_Elec_Tight->push_back(mapTightElec[electronRef]);
         
         T_Elec_nLost->push_back(eleIt->gsfTrack()->hitPattern().numberOfHits(reco::HitPattern::MISSING_INNER_HITS));
         //T_Elec_nHits->push_back(eleIt->gsfTrack()d$d$->trackerExpectedHitsInner().numberOfHits()); // the same as the previous one
@@ -660,7 +683,7 @@ ElecIdTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
             for (unsigned int iteTrigObj = 0 ; iteTrigObj < filterToMatch_.size() ; iteTrigObj++){
                 bool foundTheLeg = false;
                 for (unsigned int i = 0 ; i < legObjects.size() ; i++){
-                    if (legRefs.at(i)==iteTrigObj) continue;
+                    if (legRefs.at(i)!=iteTrigObj) continue;
                     float deltaR = sqrt(pow(legObjects[i].eta()-muon->eta(),2)+ pow(acos(cos(legObjects[i].phi()-muon->phi())),2)) ;
                     if (deltaR<0.1) {
                         foundTheLeg = true;
@@ -797,6 +820,13 @@ ElecIdTreeProducer::beginJob()
     mytree_->Branch("T_Elec_chargedHadronIso04", "std::vector<float>", &T_Elec_chargedHadronIso04);
     mytree_->Branch("T_Elec_neutralHadronIso04", "std::vector<float>", &T_Elec_neutralHadronIso04);
     mytree_->Branch("T_Elec_photonIso04", "std::vector<float>", &T_Elec_photonIso04);
+    
+    mytree_->Branch("T_Elec_Veto", "std::vector<int>", &T_Elec_Veto);
+    mytree_->Branch("T_Elec_Loose", "std::vector<int>", &T_Elec_Loose);
+    mytree_->Branch("T_Elec_Medium", "std::vector<int>", &T_Elec_Medium);
+    mytree_->Branch("T_Elec_Tight", "std::vector<int>", &T_Elec_Tight);
+
+    
     
     
     
@@ -1036,6 +1066,12 @@ ElecIdTreeProducer::beginEvent()
     T_Gen_Elec_fromTAU = new std::vector<int>;
     T_Gen_Elec_softElectron = new std::vector<int>;
     
+    T_Elec_Veto = new std::vector<int>;
+    T_Elec_Loose = new std::vector<int>;
+    T_Elec_Medium = new std::vector<int>;
+    T_Elec_Tight = new std::vector<int>;
+
+    
     T_Elec_TriggerLeg = new std::vector<int>;
     
     T_Elec_Eta = new std::vector<float>;
@@ -1250,6 +1286,12 @@ ElecIdTreeProducer::endEvent()
     delete T_Gen_Elec_softElectron;
     
     delete T_Elec_TriggerLeg;
+    
+    delete T_Elec_Veto;
+    delete T_Elec_Loose;
+    delete T_Elec_Medium;
+    delete T_Elec_Tight;
+
     
     delete T_Elec_Eta;
     delete T_Elec_Phi;
