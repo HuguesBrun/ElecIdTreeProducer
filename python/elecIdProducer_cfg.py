@@ -20,7 +20,7 @@ process.MessageLogger.cerr.FwkReport.reportEvery = 10
 process.source = cms.Source("PoolSource",
     # replace 'myfile.root' with the source file you want to use
     fileNames = cms.untracked.vstring(
-                                      'file:/tmp/hbrun/theDYJetFile.root'
+                                      'file:/tmp/hbrun/theRECOfile.root'
     )
 )
 
@@ -38,10 +38,10 @@ process.ElecIdTreeProducer = cms.EDAnalyzer('ElecIdTreeProducer',
     isMC                        = cms.bool(False),
     doMuon                      = cms.bool(False),
     electronsCollection       	= cms.InputTag("gedGsfElectrons","",typeProcess),
-    elecIdName                  = cms.VInputTag(cms.InputTag("egmGsfElectronIDs:cutBasedElectronID-CSA14-PU20bx25-V0-standalone-veto"),
-                                                cms.InputTag("egmGsfElectronIDs:cutBasedElectronID-CSA14-PU20bx25-V0-standalone-loose"),
-                                                cms.InputTag("egmGsfElectronIDs:cutBasedElectronID-CSA14-PU20bx25-V0-standalone-medium"),
-                                                cms.InputTag("egmGsfElectronIDs:cutBasedElectronID-CSA14-PU20bx25-V0-standalone-tight")),
+    elecIdName                  = cms.VInputTag(cms.InputTag("egmGsfElectronIDs:cutBasedElectronID-PHYS14-PU20bx25-V1-standalone-loose"),
+                                                cms.InputTag("egmGsfElectronIDs:cutBasedElectronID-PHYS14-PU20bx25-V1-standalone-loose"),
+                                                cms.InputTag("egmGsfElectronIDs:cutBasedElectronID-PHYS14-PU20bx25-V1-standalone-medium"),
+                                                cms.InputTag("egmGsfElectronIDs:cutBasedElectronID-PHYS14-PU20bx25-V1-standalone-tight")),
     muonProducer 	         	= cms.VInputTag(cms.InputTag("muons")),
     primaryVertexInputTag   	= cms.InputTag("offlinePrimaryVertices","",typeProcess),
     rechitCollectionEB   	= cms.InputTag("reducedEcalRecHitsEB","",typeProcess),

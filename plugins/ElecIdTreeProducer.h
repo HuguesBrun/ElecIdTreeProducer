@@ -90,6 +90,25 @@
 #include "DataFormats/MuonReco/interface/MuonFwd.h"
 #include "DataFormats/MuonReco/interface/MuonSelectors.h"
 
+#include "HLTrigger/HLTcore/interface/HLTConfigProvider.h"
+#include "DataFormats/Common/interface/TriggerResults.h"
+#include "DataFormats/HLTReco/interface/TriggerEventWithRefs.h"
+#include "DataFormats/HLTReco/interface/TriggerRefsCollections.h"
+
+#include "DataFormats/HLTReco/interface/TriggerEvent.h"
+#include "DataFormats/HLTReco/interface/TriggerObject.h"
+
+#include "DataFormats/RecoCandidate/interface/RecoEcalCandidate.h"
+#include "DataFormats/RecoCandidate/interface/RecoEcalCandidateFwd.h"
+
+#include "DataFormats/EgammaCandidates/interface/ElectronIsolationAssociation.h"
+#include "DataFormats/RecoCandidate/interface/RecoChargedCandidateFwd.h"
+#include "DataFormats/RecoCandidate/interface/RecoChargedCandidate.h"
+#include "DataFormats/Candidate/interface/CandMatchMap.h"
+#include "DataFormats/Candidate/interface/CandidateFwd.h"
+#include "DataFormats/Common/interface/ValueMap.h"
+#include "DataFormats/EgammaCandidates/interface/ElectronIsolationAssociation.h"
+
 
 // root stuff !
 #include "TH1D.h"
@@ -221,6 +240,20 @@ private:
     
     //trigger leg
     std::vector<int> *T_Elec_TriggerLeg;
+    
+    
+    //trigger infos
+    std::vector<float> *T_Trig_Eta;
+    std::vector<float> *T_Trig_Pt;
+    std::vector<float> *T_Trig_Phi;
+    std::vector<int> *T_Trig_Leg;
+    std::vector<float> *T_Trig_sigEta;
+    std::vector<float> *T_Trig_isoECAL;
+    std::vector<float> *T_Trig_isoHCAL;
+    std::vector<float> *T_Trig_HoE;
+    std::vector<float> *T_Trig_dPhi;
+    std::vector<float> *T_Trig_dEta;
+    std::vector<float> *T_Trig_isoTracker;
 
     
     // kinematics
@@ -480,4 +513,8 @@ private:
 
 typedef std::vector< edm::Handle< double > >   rhoHandles;
 typedef std::vector< edm::Handle< edm::ValueMap<bool> > >   eledIDHandles;
+
+typedef std::vector< edm::Handle<trigger::TriggerFilterObjectWithRefs> > TrigFiltVect;
+typedef edm::AssociationMap<edm::OneToValue<std::vector<reco::RecoEcalCandidate>,float,unsigned int> > recoEcalCandidateMap;
+
 
