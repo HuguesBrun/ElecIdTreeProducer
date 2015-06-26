@@ -177,6 +177,8 @@ private:
     edm::InputTag beamSpotInputTag_;
     edm::InputTag metTag_;
     edm::InputTag jetCollectionTag_;
+    edm::InputTag ecalPFclusterIsolation_;
+    edm::InputTag hcalPFclusterIsolation_;
     edm::InputTag triggerResultsTag_;
     edm::InputTag triggerSummaryLabel_;
     std::vector<edm::InputTag> rhoInputTags_;
@@ -215,6 +217,7 @@ private:
     float T_Event_AveNTruePU;
     
     
+
     
     std::vector<float> * T_Event_Rho;
     
@@ -386,6 +389,10 @@ private:
     std::vector<float> *T_Elec_chargedHadronIso04;
     std::vector<float> *T_Elec_neutralHadronIso04;
     std::vector<float> *T_Elec_photonIso04;
+    
+    // PF isolation
+    std::vector<float> *T_Elec_ECALpFiso;
+    std::vector<float> *T_Elec_HCALpFiso;
     
     // det based isolation stuff
     std::vector<float> *T_Elec_ECALiso;

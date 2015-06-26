@@ -19,6 +19,9 @@ ElecIdTreeProducer::ElecIdTreeProducer(const edm::ParameterSet& iConfig)
     
     eledIdInputTags_ = iConfig.getParameter<std::vector<edm::InputTag> >("elecIdName");
     
+    ecalPFclusterIsolation_ = iConfig.getParameter<edm::InputTag>("ecalPFisolationTag");
+    hcalPFclusterIsolation_ = iConfig.getParameter<edm::InputTag>("hcalPFisolationTag");
+    
     conversionsInputTag_ = iConfig.getParameter<edm::InputTag>("conversionsCollection");
     beamSpotInputTag_ = iConfig.getParameter<edm::InputTag>("beamSpotInputTag");
     rhoInputTags_ = iConfig.getParameter<std::vector<edm::InputTag> >("rhoTags");
@@ -149,8 +152,14 @@ ElecIdTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
     const edm::ValueMap<bool> & mapTightElec = *(eledIDs[3]);
 
 
+    //electron PF isolation
+    //edm::Handle< edm::ValueMap<float> > electronECALIsoMapH;
+  //  iEvent.getByLabel(ecalPFclusterIsolation_,electronECALIsoMapH);
+//    const edm::ValueMap<float> electronECALIsoMap = *(electronECALIsoMapH);
     
-    
+    //edm::Handle< edm::ValueMap<float> > electronHCALIsoMapH;
+   // iEvent.getByLabel(hcalPFclusterIsolation_,electronHCALIsoMapH);
+   // const edm::ValueMap<float> electronHCALIsoMap = *(electronHCALIsoMapH);
     
     noZS::EcalClusterLazyTools lazyToolsNoZS(iEvent, iSetup, ecalRechitEBToken_, ecalRechitEBToken_);
     EcalClusterLazyTools lazyTools(iEvent, iSetup, ecalRechitEBToken_, ecalRechitEEToken_);
@@ -270,10 +279,7 @@ ElecIdTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
 //////////////////////////   now get the HLT
     
     std::vector<std::string> filterToMatch;
-    filterToMatch.push_back("hltEle23Ele12CaloIdTrackIdIsoEtLeg1Filter");
-    filterToMatch.push_back("hltEle23Ele12CaloIdTrackIdIsoEtLeg2Filter");
-    filterToMatch.push_back("hltEle23Ele12CaloIdTrackIdIsoOneOEMinusOneOPLeg1Filter");
-    filterToMatch.push_back("hltEle23Ele12CaloIdTrackIdIsoOneOEMinusOneOPLeg2Filter");
+    filterToMatch.push_back("hltEle12CaloIdLTrackIdLIsoVLEtFilter");
     
     TrigFiltVect hltFilters( filterToMatch.size() );
     for (unsigned int i = 0 ; i <  filterToMatch.size() ; i++){
@@ -285,7 +291,7 @@ ElecIdTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
         if (!(hltFilters[i].isValid())) continue;
         TString nameOfFilter = filterToMatch.at(i);
       //  cout << "filter to match=" << nameOfFilter << endl;
-        if (nameOfFilter.Contains("hltEle23Ele12CaloIdTrackIdIsoEtLeg")){
+    //    if (nameOfFilter.Contains("hltEle23Ele12CaloIdTrackIdIsoEtLeg")){
             edm::Handle<recoEcalCandidateMap> clusterShapeMap;
             iEvent.getByLabel(edm::InputTag("hltEgammaClusterShape","","HLTfancy"),clusterShapeMap);
             edm::Handle<recoEcalCandidateMap> HoEMap;
@@ -294,6 +300,13 @@ ElecIdTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
             iEvent.getByLabel(edm::InputTag("hltEgammaEcalPFClusterIso","","HLTfancy"),isoEcalMap);
             edm::Handle<recoEcalCandidateMap> isoHcalMap;
             iEvent.getByLabel(edm::InputTag("hltEgammaHcalPFClusterIso","","HLTfancy"),isoHcalMap);
+        
+        edm::Handle<recoEcalCandidateMap> dEtaMap;
+        iEvent.getByLabel(edm::InputTag("hltEgammaGsfTrackVars","Deta","HLTfancy"),dEtaMap);
+        edm::Handle<recoEcalCandidateMap> dPhiMap;
+        iEvent.getByLabel(edm::InputTag("hltEgammaGsfTrackVars","Dphi","HLTfancy"),dPhiMap);
+        edm::Handle<recoEcalCandidateMap> isoTrackerMap;
+        iEvent.getByLabel(edm::InputTag("hltEgammaEleGsfTrackIso","","HLTfancy"),isoTrackerMap);
 
             std::vector<edm::Ref<reco::RecoEcalCandidateCollection> > candsFilterEt;
             edm::Ref<reco::RecoEcalCandidateCollection> ref;
@@ -327,20 +340,31 @@ ElecIdTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
                 T_Trig_dEta->push_back(-1);
                 T_Trig_dPhi->push_back(-1);
                 T_Trig_isoTracker->push_back(-1);
+                
+                if (dEtaMap.isValid()){
+                    recoEcalCandidateMap::const_iterator valdEta = (*dEtaMap).find(ref);
+                    T_Trig_dEta->push_back(valdEta->val);
+                }
+                else T_Trig_dEta->push_back(-1);
+                if (dPhiMap.isValid()){
+                    recoEcalCandidateMap::const_iterator valdPhi = (*dPhiMap).find(ref);
+                    T_Trig_dPhi->push_back(valdPhi->val);
+                }
+                else T_Trig_dPhi->push_back(-1);
+                if (isoTrackerMap.isValid()){
+                    recoEcalCandidateMap::const_iterator valisoTracker = (*isoTrackerMap).find(ref);
+                    T_Trig_isoTracker->push_back(valisoTracker->val);
+                }
+                else T_Trig_isoTracker->push_back(-1);
             }
-            
-        }
-        else if (nameOfFilter.Contains("hltEle23Ele12CaloIdTrackIdIsoOneOEMinusOneOP")){
-            edm::Handle<recoEcalCandidateMap> dEtaMap;
-            iEvent.getByLabel(edm::InputTag("hltEgammaGsfTrackVars","Deta","HLTfancy"),dEtaMap);
-            edm::Handle<recoEcalCandidateMap> dPhiMap;
-            iEvent.getByLabel(edm::InputTag("hltEgammaGsfTrackVars","Dphi","HLTfancy"),dPhiMap);
-            edm::Handle<recoEcalCandidateMap> isoTrackerMap;
-            iEvent.getByLabel(edm::InputTag("hltEgammaEleGsfTrackIso","","HLTfancy"),isoTrackerMap);
+        
+     //   }
+      //  else if (nameOfFilter.Contains("hltEle23Ele12CaloIdTrackIdIsoOneOEMinusOneOP")){
+
 
             
-            std::vector<edm::Ref<reco::RecoEcalCandidateCollection> > candsFilterElec;
-            edm::Ref<reco::RecoEcalCandidateCollection> ref;
+      /*      std::vector<edm::Ref<reco::RecoEcalCandidateCollection> > candsFilterElec;
+            //edm::Ref<reco::RecoEcalCandidateCollection> ref;
             hltFilters[i]->getObjects(trigger::TriggerCluster, candsFilterElec);
             for (size_t j = 0 ; j < candsFilterElec.size() ; j++){
                 ref = candsFilterElec[j];
@@ -367,9 +391,9 @@ ElecIdTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
                 T_Trig_HoE->push_back(-1);
                 T_Trig_isoECAL->push_back(-1);
                 T_Trig_isoHCAL->push_back(-1);
-            }
+            }*/
             
-        }
+        //}
     }
     
     
@@ -482,6 +506,9 @@ ElecIdTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
         T_Elec_Loose->push_back(mapLooseElec[electronRef]);
         T_Elec_Medium->push_back(mapMediumElec[electronRef]);
         T_Elec_Tight->push_back(mapTightElec[electronRef]);
+        
+//        T_Elec_ECALpFiso->push_back(electronECALIsoMap[electronRef]);
+//        T_Elec_HCALpFiso->push_back(electronHCALIsoMap[electronRef]);
         
         T_Elec_nLost->push_back(eleIt->gsfTrack()->hitPattern().numberOfHits(reco::HitPattern::MISSING_INNER_HITS));
         //T_Elec_nHits->push_back(eleIt->gsfTrack()d$d$->trackerExpectedHitsInner().numberOfHits()); // the same as the previous one
@@ -944,7 +971,9 @@ ElecIdTreeProducer::beginJob()
     mytree_->Branch("T_Elec_Medium", "std::vector<int>", &T_Elec_Medium);
     mytree_->Branch("T_Elec_Tight", "std::vector<int>", &T_Elec_Tight);
 
-    
+    mytree_->Branch("T_Elec_ECALpFiso", "std::vector<float>", &T_Elec_ECALpFiso);
+    mytree_->Branch("T_Elec_HCALpFiso", "std::vector<float>", &T_Elec_HCALpFiso);
+
     
     
     
@@ -1292,7 +1321,8 @@ ElecIdTreeProducer::beginEvent()
     T_Elec_noZSe2x5MaxSeed = new std::vector<float>;
     T_Elec_noZSe5x5 = new std::vector<float>;
 
-    
+    T_Elec_ECALpFiso = new std::vector<float>;
+    T_Elec_HCALpFiso = new std::vector<float>;
     
     T_Elec_ECALiso = new std::vector<float>;
     T_Elec_HCALiso = new std::vector<float>;
@@ -1522,6 +1552,9 @@ ElecIdTreeProducer::endEvent()
     delete T_Elec_noZSe1x5;
     delete T_Elec_noZSe2x5MaxSeed;
     delete T_Elec_noZSe5x5;
+    
+    delete T_Elec_ECALpFiso;
+    delete T_Elec_HCALpFiso;
 
     
     delete T_Elec_ECALiso;
