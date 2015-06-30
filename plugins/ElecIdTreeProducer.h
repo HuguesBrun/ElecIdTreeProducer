@@ -166,6 +166,7 @@ private:
     HLTConfigProvider hltConfig; 
     
     bool isMC_;
+    bool checkHLT_;
     bool doMuon_;
     edm::InputTag electronsCollection_;
     std::vector<edm::InputTag> eledIdInputTags_;
