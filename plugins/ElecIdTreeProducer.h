@@ -109,6 +109,10 @@
 #include "DataFormats/Common/interface/ValueMap.h"
 #include "DataFormats/EgammaCandidates/interface/ElectronIsolationAssociation.h"
 
+//L1 EM particles
+#include "DataFormats/L1Trigger/interface/L1EmParticle.h"
+#include "DataFormats/L1Trigger/interface/L1EmParticleFwd.h"
+
 
 // root stuff !
 #include "TH1D.h"
@@ -214,6 +218,7 @@ private:
     float T_Event_nTruePU;
     int T_Event_nPUm;
     int T_Event_nPUp;
+    int T_Event_nPV;
     float T_Event_AveNTruePU;
     
     
@@ -243,6 +248,7 @@ private:
     
     //trigger leg
     std::vector<int> *T_Elec_TriggerLeg;
+    std::vector<float> *T_Elec_LowEGmatched;
     
     
     //trigger infos

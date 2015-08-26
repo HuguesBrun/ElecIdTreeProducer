@@ -93,10 +93,22 @@ ElecIdTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
     
     
     
+    //check the L1 candidateds
+    
+    edm::Handle<l1extra::L1EmParticleCollection> theL1extraParticles;
+    iEvent.getByLabel(edm::InputTag("l1extraParticles","NonIsolated","RECO"),theL1extraParticles);
+    
+    edm::Handle<l1extra::L1EmParticleCollection> theL1extraParticlesIsolated;
+    iEvent.getByLabel(edm::InputTag("l1extraParticles","Isolated","RECO"),theL1extraParticlesIsolated);
+    
+    
+//cout << "there are " << theL1extraParticles.isValid() << " L1 extra particles" << endl;
+    
+    
     //load the transiant tracks builder
-    edm::ESHandle<TransientTrackBuilder> builder;
+  /*  edm::ESHandle<TransientTrackBuilder> builder;
     iSetup.get<TransientTrackRecord>().get("TransientTrackBuilder", builder);
-    TransientTrackBuilder thebuilder = *(builder.product());
+    TransientTrackBuilder thebuilder = *(builder.product());*/
     
     
     // Jet
@@ -205,6 +217,7 @@ ElecIdTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
     
     reco::Vertex dummy;
     const reco::Vertex *pv = &dummy;
+    T_Event_nPV = vtx_h->size();
     if (vtx_h->size() != 0) {
         pv = &*vtx_h->begin();
     } else { // create a dummy PV
@@ -231,6 +244,7 @@ ElecIdTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
         std::cout << "the curent menu is " << hltConfig.tableName() << std::endl;
         for (unsigned int itePath=0 ; itePath<nbPaths ; itePath++){
             for (size_t j = 0; j < hltConfig.triggerNames().size(); j++) {
+                //std::cout << "trigger paths=" << TString(hltConfig.triggerNames()[j]) << endl;
                 if (TString(hltConfig.triggerNames()[j]).Contains(pathsToSave_.at(itePath))){
                     triggerBits_.push_back(j);
                     cout << "found the path " << pathsToSave_.at(itePath) << endl;
@@ -265,6 +279,7 @@ ElecIdTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
     for (size_t iteFilter=0; iteFilter<filterToMatch_.size(); iteFilter++) {
 	edm::InputTag filterTag = edm::InputTag(filterToMatch_.at(iteFilter), "", HLTprocess_);
         size_t filterIndex = (*triggerSummary).filterIndex(filterTag);
+//	cout << "filter=" << filterToMatch_.at(iteFilter);
         if (filterIndex < (*triggerSummary).sizeFilters()) { //check if the trigger object is present
             //save the trigger objects corresponding to muon leg
             const trigger::Keys &keys = (*triggerSummary).filterKeys(filterIndex);
@@ -272,8 +287,10 @@ ElecIdTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
                 trigger::TriggerObject foundObject = (allTriggerObjects)[keys[j]];
                 legObjects.push_back(foundObject);
                 legRefs.push_back(iteFilter);
+//		cout << " found adding iteFilter=" << iteFilter << endl;
             }
         }
+    //    cout << endl;
     }
     
 //////////////////////////   now get the HLT
@@ -486,7 +503,24 @@ ElecIdTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
             }
         }
         T_Elec_TriggerLeg->push_back(theLegInfo);
-        
+        //now loop on the L1 particles
+        l1extra::L1EmParticleCollection::const_iterator itrEm;
+        float maxL1matched = -1;
+        for( itrEm = theL1extraParticles->begin();  itrEm != theL1extraParticles->end(); ++itrEm ) {
+            float deltaR = sqrt(pow(itrEm->eta()-eleIt->eta(),2)+ pow(acos(cos(itrEm->phi()-eleIt->phi())),2));
+            if (deltaR< 0.4) {
+                if (itrEm->pt()>maxL1matched) maxL1matched = itrEm->pt();
+            }
+        }
+
+        l1extra::L1EmParticleCollection::const_iterator itrEmIso;
+        for( itrEmIso = theL1extraParticlesIsolated->begin();  itrEmIso != theL1extraParticlesIsolated->end(); ++itrEmIso ) {
+            float deltaR = sqrt(pow(itrEmIso->eta()-eleIt->eta(),2)+ pow(acos(cos(itrEmIso->phi()-eleIt->phi())),2));
+            if (deltaR< 0.4) {
+                if (itrEmIso->pt()>maxL1matched) maxL1matched = itrEmIso->pt();
+            }
+        }
+        T_Elec_LowEGmatched->push_back(maxL1matched);
         T_Elec_Eta->push_back(eleIt->eta());
         T_Elec_Phi->push_back(eleIt->phi());
         T_Elec_Px->push_back(eleIt->px());
@@ -528,7 +562,7 @@ ElecIdTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
         // ip stuff
         float pv_ip3d = -999.0;
         float pv_ip3dSig = 0.0;
-        if (eleIt->gsfTrack().isNonnull()) {
+       /* if (eleIt->gsfTrack().isNonnull()) {
             const double gsfsign   = ( (-eleIt->gsfTrack()->dxy(vtx_h->at(0).position()))   >=0 ) ? 1. : -1.;
             
             const reco::TransientTrack &tt = thebuilder.build(eleIt->gsfTrack());
@@ -539,7 +573,7 @@ ElecIdTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
                 pv_ip3d = ip3d;
                 pv_ip3dSig = ip3d/ip3derr;
             }
-        }
+        }*/
         
         
         T_Elec_ip3d->push_back(pv_ip3d);
@@ -918,6 +952,7 @@ ElecIdTreeProducer::beginJob()
     mytree_->Branch("T_Event_nTruePU", &T_Event_nTruePU, "T_Event_nTruePU/F");
     mytree_->Branch("T_Event_nPUm", &T_Event_nPUm, "T_Event_nPUm/I");
     mytree_->Branch("T_Event_nPUp", &T_Event_nPUp, "T_Event_nPUp/I");
+    mytree_->Branch("T_Event_nPV", &T_Event_nPV, "T_Event_nPV/I");
     mytree_->Branch("T_Event_AveNTruePU", &T_Event_AveNTruePU, "T_Event_AveNTruePU/F");
 
     
@@ -954,6 +989,7 @@ ElecIdTreeProducer::beginJob()
     
     
     mytree_->Branch("T_Elec_TriggerLeg", "std::vector<int>", &T_Elec_TriggerLeg);
+    mytree_->Branch("T_Elec_LowEGmatched", "std::vector<float>", &T_Elec_LowEGmatched);
     
     mytree_->Branch("T_Elec_puChargedIso", "std::vector<float>", &T_Elec_puChargedIso);
     mytree_->Branch("T_Elec_allChargedHadronIso", "std::vector<float>", &T_Elec_allChargedHadronIso);
@@ -1233,6 +1269,7 @@ ElecIdTreeProducer::beginEvent()
 
     
     T_Elec_TriggerLeg = new std::vector<int>;
+    T_Elec_LowEGmatched = new std::vector<float>;
     
     T_Elec_Eta = new std::vector<float>;
     T_Elec_Phi = new std::vector<float>;
@@ -1460,6 +1497,7 @@ ElecIdTreeProducer::endEvent()
 
     
     delete T_Elec_TriggerLeg;
+    delete T_Elec_LowEGmatched;
     
     delete T_Elec_Veto;
     delete T_Elec_Loose;
