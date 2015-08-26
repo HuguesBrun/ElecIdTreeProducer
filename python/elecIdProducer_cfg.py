@@ -20,9 +20,27 @@ process.MessageLogger.cerr.FwkReport.reportEvery = 10
 process.source = cms.Source("PoolSource",
     # replace 'myfile.root' with the source file you want to use
     fileNames = cms.untracked.vstring(
-                                      'file:/tmp/hbrun/theRECOfile.root'
+                                      '/store/group/phys_muon/hbrun/dataCommissioning/DY_AOD/theDY_AODfile_1.root'
     )
 )
+
+
+from PhysicsTools.SelectorUtils.tools.vid_id_tools import *
+# turn on VID producer, indicate data format  to be
+# DataFormat.AOD or DataFormat.MiniAOD, as appropriate 
+
+dataFormat = DataFormat.AOD
+
+switchOnVIDElectronIdProducer(process, dataFormat)
+
+# define which IDs we want to produce
+my_id_modules = ['RecoEgamma.ElectronIdentification.Identification.cutBasedElectronID_PHYS14_PU20bx25_V2_cff',
+                 'RecoEgamma.ElectronIdentification.Identification.heepElectronID_HEEPV51_cff']
+
+#add them to the VID producer
+for idmod in my_id_modules:
+    setupAllVIDIdsInModule(process,idmod,setupVIDElectronSelection)
+
 
 
 process.GlobalTag.globaltag = 'FT_R_70_V1::All'
@@ -38,10 +56,10 @@ process.ElecIdTreeProducer = cms.EDAnalyzer('ElecIdTreeProducer',
     isMC                        = cms.bool(False),
     doMuon                      = cms.bool(False),
     electronsCollection       	= cms.InputTag("gedGsfElectrons","",typeProcess),
-    elecIdName                  = cms.VInputTag(cms.InputTag("egmGsfElectronIDs:cutBasedElectronID-PHYS14-PU20bx25-V1-standalone-loose"),
-                                                cms.InputTag("egmGsfElectronIDs:cutBasedElectronID-PHYS14-PU20bx25-V1-standalone-loose"),
-                                                cms.InputTag("egmGsfElectronIDs:cutBasedElectronID-PHYS14-PU20bx25-V1-standalone-medium"),
-                                                cms.InputTag("egmGsfElectronIDs:cutBasedElectronID-PHYS14-PU20bx25-V1-standalone-tight")),
+    elecIdName                  = cms.VInputTag(cms.InputTag("egmGsfElectronIDs:cutBasedElectronID-PHYS14-PU20bx25-V2-standalone-loose"),
+                                                cms.InputTag("egmGsfElectronIDs:cutBasedElectronID-PHYS14-PU20bx25-V2-standalone-loose"),
+                                                cms.InputTag("egmGsfElectronIDs:cutBasedElectronID-PHYS14-PU20bx25-V2-standalone-medium"),
+                                                cms.InputTag("egmGsfElectronIDs:cutBasedElectronID-PHYS14-PU20bx25-V2-standalone-tight")),
     muonProducer 	         	= cms.VInputTag(cms.InputTag("muons")),
     primaryVertexInputTag   	= cms.InputTag("offlinePrimaryVertices","",typeProcess),
     rechitCollectionEB   	= cms.InputTag("reducedEcalRecHitsEB","",typeProcess),
@@ -49,37 +67,17 @@ process.ElecIdTreeProducer = cms.EDAnalyzer('ElecIdTreeProducer',
     conversionsCollection   = cms.InputTag("allConversions","",typeProcess),
     beamSpotInputTag   = cms.InputTag("offlineBeamSpot","",typeProcess),
     rhoTags =               cms.VInputTag(cms.InputTag("kt6PFJetsForIsolation","rho","runAnalyzer")),#,cms.InputTag("fixedGridRhoAll","","RECO"), cms.InputTag("fixedGridRhoFastjetAll","","RECO"), cms.InputTag("fixedGridRhoFastjetAllCalo","","RECO"), cms.InputTag("fixedGridRhoFastjetCentralCalo","","RECO"), cms.InputTag("fixedGridRhoFastjetCentralChargedPileUp","","RECO"), cms.InputTag("fixedGridRhoFastjetCentralNeutral","","RECO")),
+    ecalPFisolationTag = cms.InputTag("electronEcalPFClusterIsolationProducer"),
+    hcalPFisolationTag = cms.InputTag("electronHcalPFClusterIsolationProducer"),
     metTag     = cms.InputTag("pfMet", "", typeProcess),
-    jetCollectionTag     = cms.InputTag("ak5PFJets", "", typeProcess),
+    jetCollectionTag     = cms.InputTag("ak4PFJets", "", typeProcess),
     triggerResultTag     = cms.InputTag("TriggerResults", "", "HLT"),
     triggerSummaryTag    = cms.InputTag("hltTriggerSummaryAOD", "", "HLT"),
-                                            pathsToSave           =cms.vstring("HLT_Ele27_eta2p1_WP85_Gsf_v1",
-                                                                               "HLT_Ele23_Ele12_CaloId_TrackId_Iso_v1",
-                                                                               "HLT_IsoMu20_eta2p1_IterTrk02_v1",
-                                                                               "HLT_IsoMu24_eta2p1_IterTrk02_v1",
-                                                                               "HLT_IsoTkMu20_eta2p1_IterTrk02_v1",
-                                                                               "HLT_IsoTkMu24_eta2p1_IterTrk02_v1",
-                                                                               "HLT_Mu17_Mu8_v1",
-                                                                               "HLT_Mu17_TkMu8_v1",
-                                                                               "HLT_Mu17_TrkIsoVVL_Mu8_TrkIsoVVL_v1",
-                                                                               "HLT_Mu17_TrkIsoVVL_TkMu8_TrkIsoVVL_v1",
-                                                                               "HLT_Mu8_TrkIsoVVL_Ele23_Gsf_CaloId_TrackId_Iso_MediumWP_v1",
-                                                                               "HLT_Mu23_TrkIsoVVL_Ele12_Gsf_CaloId_TrackId_Iso_MediumWP_v1"),
-                                            filterToMatch           =cms.vstring("hltEle27WP85GsfTrackIsoFilter",
-                                                                                 "hltEle23Ele12CaloIdTrackIdIsoTrackIsoLeg1Filter",
-                                                                                 "hltEle23Ele12CaloIdTrackIdIsoTrackIsoLeg2Filter",
-                                                                                 "hltL3crIsoL1sMu16Eta2p1L1f0L2f16QL3f20QL3crIsoRhoFiltered0p15IterTrk02",
-                                                                                 "hltL3crIsoL1sMu16Eta2p1L1f0L2f16QL3f24QL3crIsoRhoFiltered0p15IterTrk02",
-                                                                                 "hltL3fL1sMu16L1Eta2p1f0TkFiltered20QL3crIsoRhoFiltered0p15IterTrk02",
-                                                                                 "hltL3fL1sMu16L1Eta2p1f0TkFiltered24QL3crIsoRhoFiltered0p15IterTrk02",
-                                                                                 "hltDiMuonGlb17Glb8DzFiltered0p2",
-                                                                                 "hltDiMuonGlb17Trk8DzFiltered0p2",
-                                                                                 "hltDiMuonGlb17Glb8DzFiltered0p2RelTrkIsoFiltered0p4",
-                                                                                 "hltDiMuonGlb17Trk8DzFiltered0p2RelTrkIsoFiltered0p4",
-                                                                                 "hltL1sL1Mu5EG20ORL1Mu5IsoEG18L3IsoFiltered8",
-                                                                                 "hltMu8Ele23GsfTrackIsoLegEle23GsfCaloIdTrackIdIsoMediumWPFilter",
-                                                                                 "hltL1Mu12EG7L3IsoMuFiltered23",
-                                                                                 "hltMu23Ele12GsfTrackIsoLegEle12GsfCaloIdTrackIdIsoMediumWPFilter"),
+                                            pathsToSave           =cms.vstring("HLT_Ele17_Ele12_CaloIdL_TrackIdL_IsoVL_DZ_v*",
+                                                                               "HLT_Ele27_eta2p1_WPLoose_Gsf_v*"),
+                                            filterToMatch           =cms.vstring("hltEle27WPLooseGsfTrackIsoFilter",
+                                                                                 "hltEle17Ele12CaloIdLTrackIdLIsoVLTrackIsoLeg1Filter",
+                                                                                 "hltEle17Ele12CaloIdLTrackIdLIsoVLTrackIsoLeg2Filter"),
     HLTprocess            = cms.string("HLT"),
     outputFile		        = cms.string("ElecIDtree.root")
 )
